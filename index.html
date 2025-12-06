@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: City Grid</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for a cyberpunk/GTA-like HUD aesthetic */
+        body {
+            background-color: #1a1a2e; /* Dark, deep purple-blue */
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        /* Main game container for vertical centering */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        /* Wrapper for canvas and overlay */
+        #canvasWrapper {
+            position: relative;
+            max-width: 800px; /* Default Desktop Max Width */
+        }
+
+        /* FIX 1: Adjust scaling for mobile to make the game appear properly smaller and centered */
+        @media (max-width: 640px) {
+            #canvasWrapper {
+                /* Reduced scale factor to make it fit properly and be smaller, compensating for the large source canvas (800px wide) */
+                transform: scale(0.8);
+                transform-origin: top center;
+                /* Adjusted margin top to pull the scaled content back into view and make borders visible */
+                margin-top: -50px;
+            }
+        }
+
+        #gameCanvas {
+            border: 4px solid #00f0ff; /* Neon border */
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+            background-color: #13132e; /* Base canvas color */
+            display: block;
+            width: 800px; /* Keep fixed size for rendering context */
+            height: 450px;
+        }
+
+        /* Overlay/Modal Styling */
+        #gameOverlay {
+            background-color: rgba(13, 13, 30, 0.9); /* Dark semi-transparent background */
+            z-index: 10;
+        }
+
+        #modalContent {
+            border: 3px solid #ff007f; /* Magenta accent */
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
+            color: #00f0ff;
+            text-shadow: 0 0 5px #00f0ff;
+            max-width: 400px; /* Wider for shop content */
+            width: 11/12;
+        }
+
+        /* Shop table specific styles */
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #ff007f30;
+        }
+        .shop-item:last-child {
+            border-bottom: none;
+        }
+        .shop-price {
+            min-width: 100px;
+            text-align: right;
+        }
+
+        /* Color swatches */
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            cursor: pointer;
+            display: inline-block;
+            margin: 4px;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s;
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+        .color-swatch.selected {
+            border: 4px solid #00f0ff;
+            box-shadow: 0 0 15px #00f0ff;
+        }
+
+        .hud-panel {
+            background-color: rgba(13, 13, 30, 0.8);
+            border: 2px solid #ff007f; /* Magenta accent */
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
+            color: #00f0ff;
+            text-shadow: 0 0 3px #00f0ff;
+        }
+        .btn-action {
+            background-color: #ff007f;
+            color: #0d0d1e;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #b8005b;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+        }
+        .btn-action:hover {
+            background-color: #ff33a1;
+            box-shadow: 0 2px #b8005b;
+            transform: translateY(2px);
+        }
+        .btn-secondary {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #00aaff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+        }
+         .btn-secondary:hover {
+            background-color: #33ffff;
+            box-shadow: 0 2px #00aaff;
+            transform: translateY(2px);
+        }
+        /* NEW: Class for ensuring uniform button sizing in overlays */
+        .uniform-button {
+            width: 100%;
+            text-align: center;
+        }
+
+        /* --- MOBILE BUTTON CONTROLS STYLES --- */
+
+        .mobile-controls-wrapper {
+            /* REVERTED TO ORIGINAL STATE: Hide by default */
+            display: none;
+        }
+
+        .mobile-controls {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 10px;
+            pointer-events: none;
+            z-index: 50;
+            user-select: none;
+        }
+
+        .dpad-area {
+            display: grid;
+            /* Changed to 2 columns for steering buttons only */
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+            gap: 5px;
+            width: 150px;
+            height: 60px; /* Reduced height for just left/right steering */
+            pointer-events: auto;
+            margin-left: 50px;
+        }
+
+        .control-button {
+            background-color: rgba(0, 240, 255, 0.7); /* Cyan semi-transparent */
+            color: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 10px #00f0ff;
+            border: 2px solid #ff007f;
+            border-radius: 8px;
+            pointer-events: auto;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .control-button:active {
+            background-color: #33ffff; /* Brighter on press */
+        }
+
+        /* Specific grid positions for D-pad feel (Modified for L/R only) */
+        #btn-left { grid-area: 1 / 1 / 2 / 2; height: 100%;}
+        #btn-right { grid-area: 1 / 2 / 2 / 3; height: 100%;}
+
+        .throttle-brake-area {
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: space-between;
+             height: 100px;
+             pointer-events: auto;
+             margin-right: 50px;
+        }
+
+        #btn-accel {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: rgba(255, 0, 127, 0.8); /* Magenta */
+            box-shadow: 0 0 15px #ff007f;
+            font-size: 1.8rem;
+            color: #fff;
+        }
+
+        #btn-brake {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: rgba(255, 0, 127, 0.8); /* Magenta */
+            box-shadow: 0 0 10px #ff007f;
+            font-size: 1.2rem;
+            color: #fff;
+        }
+
+        @media (max-width: 640px) {
+            .mobile-controls-wrapper {
+                display: flex; /* Show controls only on small screens */
+            }
+             .permanent-controls-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container w-full">
+    <!-- Game HUD -->
+    <div id="hud" class="w-full max-w-lg mb-4 p-3 rounded-xl hud-panel flex justify-between text-sm sm:text-base">
+        <div>
+            <span class="text-white">STATUS: </span><span id="statusText" class="text-green-400">IDLE</span>
+        </div>
+        <div>
+            <span class="text-white">CASH: </span><span id="cashText">$0</span>
+        </div>
+        <div>
+            <span class="text-white">HEAT: </span><span id="heatText" class="text-yellow-400">0</span>
+        </div>
+         <div>
+            <span class="text-white">TIME: </span><span id="timeText" class="text-cyan-400">--</span>
+        </div>
+    </div>
+
+    <!-- Canvas Wrapper (Holds the game screen and the centered overlay) -->
+    <div id="canvasWrapper" class="relative max-w-full">
+        <canvas id="gameCanvas" width="800" height="450" class="rounded-lg max-w-full"></canvas>
+
+        <!-- NEW: Centralized Game Overlay/Modal -->
+        <div id="gameOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden">
+            <div id="modalContent" class="p-6 rounded-xl text-center w-11/12 pointer-events-auto">
+                <div id="overlayMessage" class="text-lg font-bold mb-4 text-white"></div>
+                <div id="overlayActions" class="flex justify-center space-x-4">
+                    <!-- Buttons will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permanent Control Hint (Keyboard) -->
+    <div class="w-full max-w-lg mt-4 text-xs text-gray-400 text-center permanent-controls-hint">
+        Controls: W/Up (Accelerate), S/Down (Brake/Reverse), A/Left (Steer Left), D/Right (Steer Right)
+    </div>
+</div>
+
+<!-- MOBILE BUTTON CONTROLS (REVERTED and Simplified) -->
+<div class="mobile-controls-wrapper">
+    <div class="mobile-controls">
+        <!-- Left Side: Steering only (Left/Right) -->
+        <div class="dpad-area">
+            <div id="btn-left" data-key="a" class="control-button">←</div>
+            <div id="btn-right" data-key="d" class="control-button">→</div>
+        </div>
+
+        <!-- Right Side: Separate Throttle/Brake -->
+        <div class="throttle-brake-area">
+            <div id="btn-accel" data-key="w" class="control-button">↑</div>
+            <div id="btn-brake" data-key="s" class="control-button">↓</div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // --- FIREBASE SETUP (Mandatory for real-world persistence) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    // FIXED URL for getFirestore to 11.6.1 to match other versions
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global variables provided by the environment
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    let app, db, auth;
+    let userId = null;
+    let isAuthReady = false;
+    let hasFirebase = Object.keys(firebaseConfig).length > 0; // Check if config exists
+
+    // Game state variables
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const TILE_SIZE = 50;
+    const COLS = Math.floor(canvas.width / TILE_SIZE);
+    const ROWS = Math.floor(canvas.height / TILE_SIZE);
+
+    let isCrashed = false;
+    let canCollide = true;
+    let lastBribePromptTime = 0;
+    const BRIBE_PROMPT_DELAY_MS = 30000;
+
+    // NEW: Terrain Types
+    const TERRAIN_TYPE = {
+        BLOCK: 0,   // Standard building/non-drivable block
+        ROAD: 1,    // Drivable road (should always be 1)
+        PARK: 2,    // Non-drivable, visual change (green)
+        WATER: 3    // Non-drivable, heavy penalty (blue)
+    };
+
+    // NEW: Map Definition (COLS x ROWS grid) - Initialized later
+    let cityMap = [];
+
+
+    // Color definitions and costs (Re-integrated)
+    const CAR_COLORS = [
+        { name: "Magenta (Default)", hex: "#ff007f", cost: 0 },
+        { name: "Cyan", hex: "#00f0ff", cost: 1000 },
+        { name: "Red", hex: "#ff3333", cost: 1000 },
+        { name: "Yellow", hex: "#ffff00", cost: 2000 },
+        { name: "White", hex: "#ffffff", cost: 5000 },
+        { name: "Gold", hex: "#ffd700", cost: 10000 }
+    ];
+
+    let player = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        w: 30,
+        h: 15,
+        speed: 0,
+        angle: 0,
+        maxSpeed: 3,
+        acceleration: 0.1,
+        deceleration: 0.05,
+        handling: 0.05,
+        color: CAR_COLORS[0].hex, // Re-integrated color property
+        colorIndex: 0, // Re-integrated color index
+        cash: 5000,
+        heat: 0,
+        speedLevel: 1,
+        handlingLevel: 1
+    };
+
+    const UPGRADE_COSTS = {
+        MAX_LEVEL: 5,
+        SPEED_BASE_COST: 1000,
+        HANDLING_BASE_COST: 1500,
+        COST_MULTIPLIER: 1.5,
+        SPEED_BOOST: 0.5,
+        HANDLING_BOOST: 0.015
+    };
+
+    let mission = {
+        active: false,
+        type: 'delivery',
+        targets: [],
+        currentCheckpoint: 0,
+        reward: 0,
+        description: "",
+        color: '#00f0ff',
+        startTime: 0,
+        duration: 45,
+        timeLeft: 0
+    };
+
+    // High Value Event State
+    let event = {
+        active: false,
+        x: 0,
+        y: 0,
+        reward: 0,
+        duration: 30, // 30 seconds to reach the drop
+        startTime: 0,
+        timeLeft: 0,
+        color: '#ffd700' // Gold/Yellow
+    };
+
+    const keys = {};
+    const npcCars = [];
+    const policeCars = [];
+    const NPC_COUNT = 5;
+    const MAX_POLICE_CARS = 3;
+
+    // --- ENTITY CLASS DEFINITIONS (Moved up to prevent ReferenceError) ---
+
+    // Police Car Class
+    class PoliceCar {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.w = 30;
+            this.h = 15;
+            this.angle = Math.random() * Math.PI * 2;
+            this.speed = 1.5;
+            this.maxSpeed = 2.5;
+            this.acceleration = 0.05;
+            this.handling = 0.1;
+            this.color = '#000000'; // Black Car body
+            this.chasing = false;
+        }
+
+        update() {
+            if (player.heat > 0) {
+                this.chasing = true;
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const targetAngle = Math.atan2(dy, dx);
+
+                let angleDiff = targetAngle - this.angle;
+                if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                this.angle += angleDiff * this.handling * 0.5;
+                this.speed = Math.min(this.maxSpeed, this.speed + this.acceleration);
+            } else {
+                this.chasing = false;
+                this.speed = Math.max(0, this.speed - 0.01);
+            }
+
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+
+            this.x = Math.max(0, Math.min(canvas.width, this.x));
+            this.y = Math.max(0, Math.min(canvas.height, this.y));
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+
+            const sirenColor = Math.floor(performance.now() / 200) % 2 === 0 ? '#ff0000' : '#0000ff';
+            ctx.fillStyle = sirenColor;
+            ctx.fillRect(-this.w / 4, -this.h / 2 - 2, this.w / 2, 2);
+
+            ctx.restore();
+        }
+    }
+
+
+    // NPC Car Class for Traffic Simulation
+    class NPCCar {
+        constructor(x, y, angle, speed, color) {
+            this.x = x;
+            this.y = y;
+            this.w = 30;
+            this.h = 15;
+            this.angle = angle;
+            this.speed = speed;
+            this.color = color;
+        }
+
+        update() {
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+
+            if (this.x < -this.w) this.x = canvas.width + this.w;
+            if (this.x > canvas.width + this.w) this.x = -this.w;
+            if (this.y < -this.h) this.y = canvas.height + this.h;
+            if (this.y > canvas.height + this.h) this.y = -this.h;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+
+            ctx.restore();
+        }
+    }
+
+
+    // --- RENDERING / HUD FUNCTIONS ---
+
+    function updateHUD() {
+        document.getElementById('cashText').textContent = `$${player.cash}`;
+
+        const heatColor = player.heat >= 3 ? 'text-red-500' : player.heat > 0 ? 'text-yellow-400' : 'text-green-400';
+        document.getElementById('heatText').className = `text-white ${heatColor}`;
+        document.getElementById('heatText').textContent = player.heat;
+
+        document.getElementById('statusText').textContent = mission.active ? 'ON JOB' : 'IDLE';
+
+        // Update Time HUD
+        const timeTextElement = document.getElementById('timeText');
+        if (mission.active) {
+            const timeElapsed = (performance.now() - mission.startTime) / 1000;
+            const timeRemaining = Math.max(0, mission.duration - Math.floor(timeElapsed));
+
+            timeTextElement.textContent = `${timeRemaining}s`;
+            if (timeRemaining <= 10) {
+                timeTextElement.classList.add('text-red-500');
+                timeTextElement.classList.remove('text-cyan-400');
+            } else {
+                timeTextElement.classList.remove('text-red-500');
+                timeTextElement.classList.add('text-cyan-400');
+            }
+            mission.timeLeft = timeRemaining;
+        } else if (event.active) {
+             timeTextElement.textContent = `${event.timeLeft}s`;
+             timeTextElement.classList.add('text-yellow-500');
+             timeTextElement.classList.remove('text-cyan-400');
+        }
+        else {
+            timeTextElement.textContent = '--';
+            timeTextElement.classList.remove('text-red-500', 'text-yellow-500');
+            timeTextElement.classList.add('text-cyan-400');
+        }
+    }
+
+    function drawCar(x, y, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        ctx.fillStyle = player.color;
+        ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+
+        ctx.fillStyle = '#ffff00';
+        ctx.fillRect(player.w / 2 - 5, -5, 5, 10);
+
+        if (isCrashed) {
+             ctx.fillStyle = 'rgba(255, 69, 0, 0.7)';
+             ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+        }
+
+        ctx.restore();
+    }
+
+    function drawTarget(x, y) {
+        ctx.beginPath();
+        ctx.arc(x, y, TILE_SIZE / 4, 0, 2 * Math.PI);
+        ctx.fillStyle = mission.color;
+        ctx.globalAlpha = 0.5;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        ctx.strokeStyle = mission.color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // FIX APPLIED HERE: Only draw checkpoint counter if the mission type is 'checkpoint'
+        if (mission.type === 'checkpoint') {
+            ctx.fillStyle = '#00f0ff';
+            ctx.font = '14px Roboto Mono';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${mission.currentCheckpoint + 1}/${mission.targets.length}`, x, y + 5);
+        }
+    }
+
+    function drawEventTarget(x, y, timeLeft) {
+        const pulse = Math.sin(performance.now() / 200) * 0.5 + 1; // Pulsing effect
+        const radius = TILE_SIZE * 0.4 * pulse;
+
+        // Draw outer pulse
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgba(255, 215, 0, ${0.4 * pulse})`; // Gold pulsing color
+        ctx.fill();
+
+        // Draw inner marker (Gold)
+        ctx.beginPath();
+        ctx.arc(x, y, TILE_SIZE / 4, 0, 2 * Math.PI);
+        ctx.fillStyle = event.color;
+        ctx.globalAlpha = 1.0;
+        ctx.fill();
+
+        // Draw timer text
+        ctx.fillStyle = '#000000';
+        ctx.font = '12px Roboto Mono';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${timeLeft}s`, x, y);
+    }
+
+    function drawMap() {
+        ctx.fillStyle = '#13132e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const type = cityMap[r][c];
+                const x = c * TILE_SIZE;
+                const y = r * TILE_SIZE;
+
+                if (type === TERRAIN_TYPE.PARK) {
+                    // Park/Green Area
+                    ctx.fillStyle = '#005f00';
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#007f00';
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                } else if (type === TERRAIN_TYPE.WATER) {
+                    // Water/Hazard Area
+                    ctx.fillStyle = '#00003f';
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#008cff';
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                } else if (type === TERRAIN_TYPE.BLOCK) {
+                     // Standard Building Block
+                    ctx.fillStyle = '#2a2a4a';
+                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#4e556e';
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                }
+            }
+        }
+
+        // Redraw roads over blocks for intersection lines (as before)
+        ctx.strokeStyle = '#6c757d';
+        ctx.lineWidth = TILE_SIZE / 2;
+
+        for (let i = 0; i <= canvas.width / TILE_SIZE; i++) {
+            // Vertical roads
+            ctx.beginPath();
+            ctx.moveTo(i * TILE_SIZE + TILE_SIZE / 2, 0);
+            ctx.lineTo(i * TILE_SIZE + TILE_SIZE / 2, canvas.height);
+            ctx.stroke();
+
+            // Horizontal roads
+            ctx.beginPath();
+            ctx.moveTo(0, i * TILE_SIZE + TILE_SIZE / 2);
+            ctx.lineTo(canvas.width, i * TILE_SIZE + TILE_SIZE / 2);
+            ctx.stroke();
+        }
+    }
+
+
+    // --- GAME LOGIC FUNCTIONS ---
+
+    function initTraffic() {
+        for (let i = 0; i < NPC_COUNT; i++) {
+            const horizontal = Math.random() > 0.5;
+            let x, y, angle, speed;
+
+            if (horizontal) {
+                x = Math.random() * canvas.width;
+                y = Math.floor(Math.random() * (canvas.height / TILE_SIZE)) * TILE_SIZE + TILE_SIZE / 2;
+                angle = Math.random() > 0.5 ? 0 : Math.PI;
+            } else {
+                x = Math.floor(Math.random() * (canvas.width / TILE_SIZE)) * TILE_SIZE + TILE_SIZE / 2;
+                y = Math.random() * canvas.height;
+                angle = Math.random() > 0.5 ? Math.PI / 2 : 3 * Math.PI / 2;
+            }
+
+            speed = Math.random() * 1.5 + 0.5;
+            const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+
+            npcCars.push(new NPCCar(x, y, angle, speed, color));
+        }
+    }
+
+    function spawnPolice() {
+        if (policeCars.length < player.heat && policeCars.length < MAX_POLICE_CARS) {
+            const spawnDistance = 150;
+            const angle = Math.random() * Math.PI * 2;
+            const x = player.x + Math.cos(angle) * spawnDistance;
+            const y = player.y + Math.sin(angle) * spawnDistance;
+
+            policeCars.push(new PoliceCar(x, y));
+        }
+    }
+
+    function checkInterception() {
+        if (player.heat === 0) return;
+
+        for (let i = policeCars.length - 1; i >= 0; i--) {
+            const cop = policeCars[i];
+            const distance = Math.sqrt(
+                (player.x - cop.x) ** 2 + (player.y - cop.y) ** 2
+            );
+
+            if (distance < (player.w + cop.w) / 2 + 5) {
+                const fine = Math.min(player.cash, 100 * player.heat);
+                player.cash -= fine;
+                player.heat = 0;
+
+                policeCars.splice(i, 1);
+
+                mission.active = false;
+
+                const message = `<span class="text-red-500">BUSTED!</span> You were intercepted by the police. Lost $${fine}. Heat cleared.`;
+                const action = `<button class="btn-action uniform-button" onclick="showMissionSelectOverlay()">Continue</button>`;
+                showOverlay(message, action);
+
+                saveGameState();
+                break;
+            }
+        }
+    }
+
+    function checkTerrainHazard() {
+        const type = getTerrainType(player.x, player.y);
+
+        if (type === TERRAIN_TYPE.PARK) {
+            // FIX 3: Apply heavy penalty and stop the player when hitting park
+            const parkDamage = Math.min(player.cash, 500);
+            player.cash -= parkDamage;
+            player.speed = 0;
+
+            const message = `<span class="text-green-500">PARK HAZARD!</span> Your car sank in the mud. Lost $${parkDamage} in cleanup costs.`;
+            const action = `<button class="btn-action uniform-button" onclick="recoverFromHazard()">Start Engine</button>`;
+            showOverlay(message, action);
+
+            player.handling = 0.001;
+        } else if (type === TERRAIN_TYPE.WATER) {
+            const waterDamage = Math.min(player.cash, 1000);
+            player.cash -= waterDamage;
+            player.speed = 0;
+
+            const message = `<span class="text-blue-500">WATER HAZARD!</span> Lost $${waterDamage} in cleanup costs.`;
+            const action = `<button class="btn-action uniform-button" onclick="recoverFromHazard()">Start Engine</button>`;
+            showOverlay(message, action);
+
+            player.handling = 0.001;
+        } else {
+             applyUpgrades();
+        }
+    }
+
+    function recoverFromHazard() {
+        const currentC = Math.floor(player.x / TILE_SIZE);
+        const currentR = Math.floor(player.y / TILE_SIZE);
+
+        let safeX = player.x;
+        let safeY = player.y;
+        let foundSafeSpot = false;
+
+        for (let r = Math.max(0, currentR - 1); r <= Math.min(ROWS - 1, currentR + 1); r++) {
+            for (let c = Math.max(0, currentC - 1); c <= Math.min(COLS - 1, currentC + 1); c++) {
+                if (cityMap[r] && cityMap[r][c] === TERRAIN_TYPE.ROAD) {
+                    safeX = c * TILE_SIZE + TILE_SIZE / 2;
+                    safeY = r * TILE_SIZE + TILE_SIZE / 2;
+                    foundSafeSpot = true;
+                    break;
+                }
+            }
+            if (foundSafeSpot) break;
+        }
+
+        player.x = safeX;
+        player.y = safeY;
+
+        applyUpgrades();
+        hideOverlay();
+    }
+
+
+    function checkCollisions() {
+        if (isCrashed || !canCollide) return;
+
+        for (let i = 0; i < npcCars.length; i++) {
+            const npc = npcCars[i];
+            const distance = Math.sqrt(
+                (player.x - npc.x) ** 2 + (player.y - npc.y) ** 2
+            );
+
+            if (distance < (player.w + npc.w) / 2 - 5) {
+
+                isCrashed = true;
+                const damageCost = Math.floor(player.cash * 0.1) + 50;
+                const loss = Math.min(player.cash, damageCost);
+                player.cash -= loss;
+
+                player.speed *= -0.5;
+                player.handling = 0.01;
+
+                npc.speed *= -1;
+
+                const message = `<span class="text-yellow-500">CRASH!</span> You hit traffic. Lost $${loss} in repairs.`;
+                const action = `<button class="btn-action uniform-button" onclick="recoverFromCrash()">Fix Car</button>`;
+                showOverlay(message, action);
+
+                saveGameState();
+                break;
+            }
+        }
+    }
+
+    function recoverFromCrash() {
+        isCrashed = false;
+        applyUpgrades();
+        hideOverlay();
+
+        canCollide = false;
+        setTimeout(() => {
+            canCollide = true;
+        }, 1000);
+    }
+
+    function failMission() {
+        mission.active = false;
+        player.heat = Math.min(5, player.heat + 2);
+
+        policeCars.length = 0;
+
+        const message = `<span class="text-red-500">MISSION FAILED!</span> Time expired. Heavy heat penalty applied.`;
+        const action = `<button class="btn-action uniform-button" onclick="showMissionSelectOverlay()">Accept Next Job</button>`;
+        showOverlay(message, action);
+
+        saveGameState();
+        updateHUD();
+    }
+
+    // --- MISSION / EVENT LOGIC ---
+
+    function startRandomEvent() {
+        if (mission.active || event.active) return;
+
+        event.active = true;
+        event.reward = Math.floor(Math.random() * 5000) + 2000;
+        event.duration = 30; // 30 seconds to complete
+        event.startTime = performance.now();
+        event.timeLeft = event.duration;
+
+        event.x = Math.random() * (canvas.width - TILE_SIZE * 2) + TILE_SIZE;
+        event.y = Math.random() * (canvas.height - TILE_SIZE * 2) + TILE_SIZE;
+
+        player.heat = 5;
+        policeCars.length = 0;
+        for(let i = 0; i < MAX_POLICE_CARS; i++) {
+             spawnPolice();
+        }
+
+        const message = `<span class="text-red-600 font-extrabold">EMERGENCY CASH DROP DETECTED!</span> High risk, High reward: $${event.reward}. Police are tracking you!`;
+        const action = `<button class="btn-action uniform-button" onclick="hideOverlay()">GO GO GO!</button>`;
+        showOverlay(message, action);
+        saveGameState();
+    }
+
+    function endEvent(result) {
+        if (!event.active) return;
+
+        event.active = false;
+
+        if (result === 'success') {
+            player.cash += event.reward;
+
+            const message = `<span class="text-green-500">EVENT SUCCESS!</span> Retrieved $${event.reward}. Now, lose the police!`;
+            const action = `<button class="btn-action uniform-button" onclick="hideOverlay()">Continue</button>`;
+            showOverlay(message, action);
+        } else if (result === 'expired') {
+            player.heat = Math.max(0, player.heat - 2);
+
+            const message = `<span class="text-yellow-500">EVENT EXPIRED.</span> The drop was retrieved by rivals. Heat slightly reduced.`;
+            const action = `<button class="btn-secondary uniform-button" onclick="hideOverlay()">Continue</button>`;
+            showOverlay(message, action);
+        }
+
+        saveGameState();
+    }
+
+    function startNewMission(type) {
+        if (mission.active) return;
+
+        mission.type = type;
+        mission.startTime = performance.now();
+
+        // FIX 3: Reset player position to center of map
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+        player.angle = 0;
+
+        if (type === 'delivery') {
+            mission.description = `DATA DELIVERY`;
+            mission.targets = [generateRandomTarget()];
+            mission.currentCheckpoint = 0;
+            mission.duration = 45;
+            player.lastHeatGainTime = performance.now(); // Reset heat timer
+            mission.reward = Math.floor(Math.random() * 500) + 200;
+            player.heat = Math.min(5, player.heat + 1);
+        } else if (type === 'checkpoint') {
+            mission.description = `CHECKPOINT RUN (3 targets)`;
+            mission.targets = [];
+
+            for (let i = 0; i < 3; i++) {
+                mission.targets.push({
+                    x: Math.random() * (canvas.width - TILE_SIZE * 2) + TILE_SIZE,
+                    y: Math.random() * (canvas.height - TILE_SIZE * 2) + TILE_SIZE
+                });
+            }
+            mission.currentCheckpoint = 0;
+            mission.duration = 60;
+            mission.reward = Math.floor(Math.random() * 700) + 800;
+            player.heat = Math.min(5, player.heat + 2);
+            player.lastHeatGainTime = performance.now(); // Reset heat timer
+        }
+
+        mission.active = true;
+        mission.timeLeft = mission.duration;
+        spawnPolice();
+        updateHUD();
+        hideOverlay();
+    }
+
+    function advanceCheckpoint() {
+        if (mission.currentCheckpoint < mission.targets.length - 1) {
+            mission.currentCheckpoint++;
+            mission.duration += 10;
+        } else {
+            completeMission();
+        }
+    }
+
+    function completeMission() {
+        player.cash += mission.reward;
+        mission.active = false;
+
+        player.heat = Math.max(0, player.heat - 1);
+
+        if (player.heat === 0) {
+            policeCars.length = 0;
+        } else if (policeCars.length > 0) {
+            policeCars.pop();
+        }
+
+        const message = `<span class="text-green-400">MISSION COMPLETE!</span> Gained $${mission.reward}.`;
+        const action = `<button class="btn-action uniform-button" onclick="showMissionSelectOverlay()">Accept Next Job</button>`;
+        showOverlay(message, action);
+
+        saveGameState();
+        updateHUD();
+        // FIX 3: Reset position after mission completion
+        player.x = canvas.width / 2;
+        player.y = canvas.height / 2;
+    }
+
+    function bribePolice() {
+        const bribeCost = 500;
+        if (player.heat > 0 && player.cash >= bribeCost) {
+            player.cash -= bribeCost;
+            player.heat = Math.max(0, player.heat - 1);
+            if (policeCars.length > 0) {
+                policeCars.pop();
+            }
+            saveGameState();
+        }
+    }
+
+
+    // --- UPGRADE LOGIC ---
+
+    function buyUpgradeMaxSpeed() {
+        const currentLevel = player.speedLevel;
+        const cost = calculateCost(UPGRADE_COSTS.SPEED_BASE_COST, currentLevel);
+
+        if (currentLevel >= UPGRADE_COSTS.MAX_LEVEL) {
+             showUpgradeShop("MAX LEVEL", "Engine upgrade already maxed out.");
+             return;
+        }
+
+        if (player.cash >= cost) {
+            player.cash -= cost;
+            player.speedLevel++;
+            applyUpgrades();
+            saveGameState();
+            showUpgradeShop(`Engine Level ${player.speedLevel} Purchased!`, `Current Max Speed: ${player.maxSpeed.toFixed(1)}`);
+        } else {
+            showUpgradeShop("Insufficient Funds", `You need $${cost} for this upgrade.`);
+        }
+    }
+
+    function buyUpgradeHandling() {
+        const currentLevel = player.handlingLevel;
+        const cost = calculateCost(UPGRADE_COSTS.HANDLING_BASE_COST, currentLevel);
+
+        if (currentLevel >= UPGRADE_COSTS.MAX_LEVEL) {
+             showUpgradeShop("MAX LEVEL", "Handling upgrade already maxed out.");
+             return;
+        }
+
+        if (player.cash >= cost) {
+            player.cash -= cost;
+            player.handlingLevel++;
+            applyUpgrades();
+            saveGameState();
+            showUpgradeShop(`Handling Level ${player.handlingLevel} Purchased!`, `Current Handling: ${player.handling.toFixed(3)}`);
+        } else {
+            showUpgradeShop("Insufficient Funds", `You need $${cost} for this upgrade.`);
+        }
+    }
+
+    function buyCarColor(index) {
+        const colorData = CAR_COLORS[index];
+
+        if (index === player.colorIndex) {
+            showCarDesignOverlay("Already Selected", `Your car is already ${colorData.name}.`);
+            return;
+        }
+
+        const isOwned = colorData.cost === 0 || player.cash >= colorData.cost;
+
+        if (isOwned) {
+            if (colorData.cost > 0) {
+                player.cash -= colorData.cost;
+            }
+
+            player.colorIndex = index;
+            applyUpgrades();
+            saveGameState();
+            showCarDesignOverlay("Color Purchased!", `New color: ${colorData.name}. Looking slick!`);
+        } else {
+            showCarDesignOverlay("Insufficient Funds", `You need $${colorData.cost} for ${colorData.name}.`);
+        }
+    }
+
+
+    // --- OVERLAY FUNCTIONS ---
+
+    function showOverlay(message, actionsHtml) {
+        document.getElementById('overlayMessage').innerHTML = message;
+        document.getElementById('overlayActions').innerHTML = actionsHtml;
+        document.getElementById('gameOverlay').classList.remove('hidden');
+        player.speed = 0;
+    }
+
+    function hideOverlay() {
+        document.getElementById('gameOverlay').classList.add('hidden');
+    }
+
+    function showMissionSelectOverlay(isInit = false) {
+        if (mission.active || event.active) return;
+
+        document.getElementById('modalContent').style.maxWidth = '450px';
+
+        const message = isInit
+            ? `Welcome to the City Grid. Choose your next hustle.`
+            : `Job finished. What's the plan?`;
+
+        const actions = `
+            <div class="flex flex-col space-y-3 w-full">
+                <button class="btn-action uniform-button" onclick="startNewMission('delivery')">
+                    Data Delivery ($200-$700 | +1 Heat)
+                </button>
+                <button class="btn-secondary uniform-button" onclick="startNewMission('checkpoint')">
+                    Checkpoint Run ($800-$1500 | +2 Heat)
+                </button>
+                <button class="btn-secondary mt-2 uniform-button" onclick="showGarageHub()">
+                    Visit Garage
+                </button>
+            </div>
+        `;
+        showOverlay(message, actions);
+    }
+
+    function showGarageHub(headerMessage = "Neon Garage", footerMessage = "Upgrade performance or change aesthetics.") {
+
+        document.getElementById('modalContent').style.maxWidth = '400px';
+
+        const upgradeContent = `
+            <p class="text-xs text-white mb-2">${headerMessage}</p>
+            <p class="text-sm text-yellow-300 mb-4">${footerMessage}</p>
+        `;
+
+        const actions = `
+            <div class="flex flex-col space-y-3 w-full">
+                <button class="btn-action mb-4 uniform-button" onclick="showUpgradeShop()">Performance Upgrades</button>
+                <button class="btn-secondary uniform-button" onclick="showCarDesignOverlay()">Car Design (Colors)</button>
+                <button class="btn-secondary mt-4 uniform-button" onclick="showMissionSelectOverlay()">Back to City</button>
+            </div>
+        `;
+
+        showOverlay(upgradeContent, actions);
+    }
+
+    function showUpgradeShop(headerMessage = "Performance Upgrades", footerMessage = "Boost your speed and handling.") {
+
+        document.getElementById('modalContent').style.maxWidth = '450px';
+
+        const speedCost = calculateCost(UPGRADE_COSTS.SPEED_BASE_COST, player.speedLevel);
+        const handlingCost = calculateCost(UPGRADE_COSTS.HANDLING_BASE_COST, player.handlingLevel);
+
+        const speedDisabled = player.speedLevel >= UPGRADE_COSTS.MAX_LEVEL ? 'disabled' : '';
+        const handlingDisabled = player.handlingLevel >= UPGRADE_COSTS.MAX_LEVEL ? 'disabled' : '';
+
+        const upgradeContent = `
+            <p class="text-xs text-white mb-2">${headerMessage}</p>
+            <p class="text-sm text-yellow-300 mb-4">${footerMessage}</p>
+            <div class="space-y-3 p-2 bg-[#1a1a2e] rounded-lg">
+                <div class="shop-item text-left">
+                    <span>Engine Upgrade (Lv ${player.speedLevel}/${UPGRADE_COSTS.MAX_LEVEL})</span>
+                    <span class="shop-price">
+                        ${speedCost !== null ? `$${speedCost}` : '<span class="text-green-500">MAX</span>'}
+                        <button class="ml-4 btn-action px-3 py-1 text-sm" onclick="buyUpgradeMaxSpeed()" ${speedDisabled}>
+                            Buy
+                        </button>
+                    </span>
+                </div>
+                <div class="shop-item text-left">
+                    <span>Handling Upgrade (Lv ${player.handlingLevel}/${UPGRADE_COSTS.MAX_LEVEL})</span>
+                    <span class="shop-price">
+                        ${handlingCost !== null ? `$${handlingCost}` : '<span class="text-green-500">MAX</span>'}
+                        <button class="ml-4 btn-action px-3 py-1 text-sm" onclick="buyUpgradeHandling()" ${handlingDisabled}>
+                            Buy
+                        </button>
+                    </span>
+                </div>
+            </div>
+        `;
+
+        const actions = `<button class="btn-secondary mt-4 uniform-button" onclick="showGarageHub()">Back to Garage</button>`;
+
+        showOverlay(upgradeContent, actions);
+    }
+
+    function showCarDesignOverlay(headerMessage = "Car Design", footerMessage = "Customize your hustle's look.") {
+        document.getElementById('modalContent').style.maxWidth = '450px';
+
+        let colorSwatches = '';
+        CAR_COLORS.forEach((color, index) => {
+            const isOwned = color.cost === 0 || player.cash >= color.cost || index === player.colorIndex;
+            const isCurrent = index === player.colorIndex;
+
+            let buttonText;
+            if (isCurrent) {
+                buttonText = 'Current';
+            } else if (isOwned) {
+                buttonText = 'Select';
+            } else {
+                buttonText = `$${color.cost}`;
+            }
+
+            colorSwatches += `
+                <div class="flex flex-col items-center p-2 rounded-lg ${isCurrent ? 'bg-indigo-900/50' : ''}">
+                    <div
+                        class="color-swatch ${isCurrent ? 'selected' : ''}"
+                        style="background-color: ${color.hex};"
+                        onclick="buyCarColor(${index})"
+                        title="${color.name} (Cost: ${color.cost === 0 ? 'Free' : '$' + color.cost})"
+                    ></div>
+                    <span class="text-xs text-white mt-1">${color.name}</span>
+                    <span class="text-xs ${isCurrent ? 'text-cyan-400' : isOwned ? 'text-green-400' : 'text-red-400'}">
+                        ${buttonText}
+                    </span>
+                </div>
+            `;
+        });
+
+        const designContent = `
+            <p class="text-xs text-white mb-2">${headerMessage}</p>
+            <p class="text-sm text-yellow-300 mb-4">${footerMessage}</p>
+            <div class="flex flex-wrap justify-center gap-2 p-2 bg-[#1a1a2e] rounded-lg">
+                ${colorSwatches}
+            </div>
+        `;
+
+        const actions = `<button class="btn-secondary mt-4 uniform-button" onclick="showGarageHub()">Back to Garage</button>`;
+
+        showOverlay(designContent, actions);
+    }
+
+    function showBribeOverlay() {
+         const currentTime = performance.now();
+         if (player.heat === 0 || currentTime - lastBribePromptTime < BRIBE_PROMPT_DELAY_MS) {
+             return;
+         }
+
+         lastBribePromptTime = currentTime;
+
+         const bribeCost = 500;
+         const canAfford = player.cash >= bribeCost;
+
+         let message, actions;
+
+         if (canAfford) {
+             message = `<span class="text-yellow-400">STATUS: HEAT ${player.heat}</span>. Bribe the officer for $${bribeCost} to reduce risk.`;
+             actions = `
+                <button class="btn-action" onclick="bribePolice(); hideOverlay()">Pay Bribe</button>
+                <button class="btn-action" onclick="hideOverlay()">Keep Running</button>
+             `;
+         } else {
+             message = `<span class="text-red-400">STATUS: HEAT ${player.heat}</span>. Police are closing in, but you can't afford a bribe ($${bribeCost} needed).`;
+             actions = `<button class="btn-action" onclick="hideOverlay()">Keep Running</button>`;
+         }
+
+         showOverlay(message, actions);
+    }
+
+
+    // --- MAIN GAME LOOP ---
+
+    function update() {
+        const overlayVisible = !document.getElementById('gameOverlay').classList.contains('hidden');
+        if (overlayVisible) {
+             updateHUD();
+             requestAnimationFrame(update);
+             return;
+        }
+
+        // --- Event Time Check ---
+        if (event.active) {
+            const timeElapsed = (performance.now() - event.startTime) / 1000;
+            event.timeLeft = Math.max(0, event.duration - Math.floor(timeElapsed));
+
+            if (event.timeLeft <= 0) {
+                endEvent('expired');
+            }
+        }
+
+        // --- HEAT DECAY CHECK (NEW) ---
+        if (player.heat > 0) {
+            const timeSinceLastHeatGain = performance.now() - player.lastHeatGainTime;
+            const HEAT_DECAY_DELAY_MS = 15000; // 15 seconds of evasion time
+
+            if (timeSinceLastHeatGain > HEAT_DECAY_DELAY_MS) {
+                 player.heat = Math.max(0, player.heat - 1);
+
+                 // Remove one police car if heat dropped
+                 if (policeCars.length > 0) {
+                     policeCars.pop();
+                 }
+
+                 // Reset the timer only after successful decay
+                 player.lastHeatGainTime = performance.now();
+            }
+        }
+
+
+        if (mission.active) {
+            updateHUD();
+            if (mission.timeLeft <= 0) {
+                failMission();
+                requestAnimationFrame(update);
+                return;
+            }
+        }
+
+
+        if (keys['w'] || keys['ArrowUp']) {
+            player.speed = Math.min(player.maxSpeed, player.speed + player.acceleration);
+        } else if (keys['s'] || keys['ArrowDown']) {
+            player.speed = Math.max(-player.maxSpeed / 2, player.speed - player.acceleration);
+        } else {
+            if (player.speed > 0) player.speed = Math.max(0, player.speed - player.deceleration);
+            if (player.speed < 0) player.speed = Math.min(0, player.speed + player.deceleration);
+        }
+
+        if (player.speed !== 0) {
+            const currentHandling = isCrashed ? player.handling * 0.1 : player.handling;
+
+            if (keys['a'] || keys['ArrowLeft']) {
+                player.angle -= currentHandling * (player.speed / player.maxSpeed);
+            }
+            if (keys['d'] || keys['ArrowRight']) {
+                player.angle += currentHandling * (player.speed / player.maxSpeed);
+            }
+        }
+
+        player.x += Math.cos(player.angle) * player.speed;
+        player.y += Math.sin(player.angle) * player.speed;
+
+        // --- Terrain Hazard Check (NEW) ---
+        checkTerrainHazard();
+
+        // Keep player within bounds (Canvas edge collision)
+        player.x = Math.max(0, Math.min(canvas.width, player.x));
+        player.y = Math.max(0, Math.min(canvas.height, player.y));
+
+        // --- Collision Checks ---
+        checkCollisions();
+        checkInterception();
+
+        // Update NPC Traffic
+        npcCars.forEach(car => car.update());
+
+        // Update Police Cars (New)
+        policeCars.forEach(car => car.update());
+
+
+        // Check if player needs to interact with the heat system
+        if (player.heat > 0 && Math.random() < 0.005) {
+            if (!overlayVisible && mission.active) {
+                showBribeOverlay();
+            }
+        }
+
+        // --- Event/Mission Completion Check ---
+
+        // 1. Check for Event Completion (Cash Drop)
+        if (event.active) {
+            const distance = Math.sqrt(
+                (player.x - event.x) ** 2 + (player.y - event.y) ** 2
+            );
+
+            if (distance < TILE_SIZE) { // Larger collection radius for events
+                endEvent('success');
+            }
+        }
+
+
+        // 2. Mission Completion Check
+        if (mission.active) {
+            const currentTarget = mission.targets[mission.currentCheckpoint];
+            const distance = Math.sqrt(
+                (player.x - currentTarget.x) ** 2 + (player.y - currentTarget.y) ** 2
+            );
+
+            if (distance < TILE_SIZE / 2) {
+                advanceCheckpoint();
+            }
+        }
+
+        // --- Check for Event Spawn ---
+        if (!mission.active && !event.active && !overlayVisible && Math.random() < 0.001) {
+             startRandomEvent();
+        }
+
+
+        // Render everything
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMap();
+
+        // Draw Target/Event
+        if (mission.active) {
+            drawTarget(mission.targets[mission.currentCheckpoint].x, mission.targets[mission.currentCheckpoint].y);
+        } else if (event.active) {
+            drawEventTarget(event.x, event.y, event.timeLeft); // Draw the special event marker
+        }
+
+        npcCars.forEach(car => car.draw());
+        policeCars.forEach(car => car.draw());
+        drawCar(player.x, player.y, player.angle);
+
+        if (!overlayVisible) {
+            updateHUD();
+        }
+        requestAnimationFrame(update);
+    }
+
+    // --- FIREBASE / INIT HELPERS ---
+
+    function generateRandomTarget() {
+        const corners = [
+            {x: TILE_SIZE, y: TILE_SIZE},
+            {x: canvas.width - TILE_SIZE, y: TILE_SIZE},
+            {x: TILE_SIZE, y: canvas.height - TILE_SIZE},
+            {x: canvas.width - TILE_SIZE, y: canvas.height - TILE_SIZE}
+        ];
+        let targetCorner;
+        do {
+            targetCorner = corners[Math.floor(Math.random() * corners.length)];
+        } while (Math.sqrt((player.x - targetCorner.x)**2 + (player.y - targetCorner.y)**2) < 200);
+        return targetCorner;
+    }
+
+    function getTerrainType(x, y) {
+        const c = Math.floor(x / TILE_SIZE);
+        const r = Math.floor(y / TILE_SIZE);
+
+        if (r < 0 || r >= ROWS || c < 0 || c >= COLS) {
+            return TERRAIN_TYPE.BLOCK; // Treat outside bounds as a block
+        }
+
+        if (!cityMap[r]) {
+            return TERRAIN_TYPE.BLOCK;
+        }
+
+        return cityMap[r][c];
+    }
+
+    function initializeCityMap() {
+        // Reset the map
+        cityMap = [];
+
+        // 1. Initialize entire map to roads
+        for (let r = 0; r < ROWS; r++) {
+            cityMap[r] = [];
+            for (let c = 0; c < COLS; c++) {
+                cityMap[r][c] = TERRAIN_TYPE.ROAD;
+            }
+        }
+
+        // 2. Lay down building blocks (odd rows/cols) and ensure inner roads
+        for (let r = 1; r < ROWS; r += 2) {
+            for (let c = 1; c < COLS; c += 2) {
+                cityMap[r][c] = TERRAIN_TYPE.BLOCK;
+            }
+        }
+
+        // 3. Add a few special non-traversable zones (e.g., parks or water)
+
+        // Example: Park in the top left quadrant
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 3; c++) {
+                if (cityMap[r][c] === TERRAIN_TYPE.BLOCK) {
+                    cityMap[r][c] = TERRAIN_TYPE.PARK;
+                }
+            }
+        }
+
+        // Example: Water in the bottom right quadrant
+        for (let r = ROWS - 4; r < ROWS; r++) {
+            for (let c = COLS - 3; c < COLS; c++) {
+                 if (cityMap[r][c] === TERRAIN_TYPE.BLOCK) {
+                    cityMap[r][c] = TERRAIN_TYPE.WATER;
+                }
+            }
+        }
+    }
+
+    function setupFirebase() {
+        if (!hasFirebase) {
+            console.log("Firebase config missing. Running in offline mode.");
+            isAuthReady = true;
+            applyUpgrades();
+            showMissionSelectOverlay(true);
+            return;
+        }
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    userId = auth.currentUser.uid;
+                } else {
+                    await signInAnonymously(auth);
+                    userId = auth.currentUser.uid;
+                }
+                isAuthReady = true;
+                console.log("Auth ready. User ID:", userId);
+                loadGameState();
+            });
+        } catch (error) {
+            console.error("Error setting up Firebase:", error);
+            document.getElementById('hud').textContent = `ERROR: Failed to connect to Firebase. Running offline.`;
+            isAuthReady = true;
+            applyUpgrades();
+            showMissionSelectOverlay(true);
+        }
+    }
+
+    // Firestore Functions
+    const getDocRef = (uid) => doc(db, `artifacts/${appId}/users/${uid}/game_data`, 'main_save');
+
+    async function loadGameState() {
+        if (!isAuthReady || !userId || !hasFirebase) return;
+
+        const docRef = getDocRef(userId);
+
+        onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                player.cash = data.cash || 0;
+                player.heat = data.heat || 0;
+                player.speedLevel = data.speedLevel || 1;
+                player.handlingLevel = data.handlingLevel || 1;
+                player.colorIndex = data.colorIndex || 0;
+                // NEW: Initialize lastHeatGainTime on load (if heat > 0)
+                if (player.heat > 0 && !player.lastHeatGainTime) {
+                    player.lastHeatGainTime = performance.now();
+                }
+            } else {
+                saveGameState();
+            }
+            applyUpgrades();
+            updateHUD();
+            if (!mission.active) showMissionSelectOverlay(true);
+        }, (error) => {
+            console.error("Error listening to game state:", error);
+        });
+    }
+
+    async function saveGameState() {
+        if (!isAuthReady || !userId || !hasFirebase) return;
+
+        try {
+            const docRef = getDocRef(userId);
+            await setDoc(docRef, {
+                cash: player.cash,
+                heat: player.heat,
+                speedLevel: player.speedLevel,
+                handlingLevel: player.handlingLevel,
+                colorIndex: player.colorIndex,
+                last_save: new Date().toISOString()
+            }, { merge: true });
+            console.log("Game state saved.");
+        } catch (error) {
+            console.error("Error saving game state:", error);
+        }
+    }
+
+    // --- UPGRADE LOGIC ---
+
+    function calculateCost(baseCost, currentLevel) {
+        if (currentLevel >= UPGRADE_COSTS.MAX_LEVEL) return null;
+        return Math.floor(baseCost * Math.pow(UPGRADE_COSTS.COST_MULTIPLIER, currentLevel - 1));
+    }
+
+    function applyUpgrades() {
+        player.maxSpeed = 3;
+        player.handling = 0.05;
+
+        player.maxSpeed += (player.speedLevel - 1) * UPGRADE_COSTS.SPEED_BOOST;
+        player.handling += (player.handlingLevel - 1) * UPGRADE_COSTS.HANDLING_BOOST;
+
+        player.color = CAR_COLORS[player.colorIndex].hex;
+    }
+
+
+    // --- Event Listeners (Unchanged) ---
+    document.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+    });
+
+    // Initialize the game
+    window.onload = function() {
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const canvas = document.getElementById('gameCanvas');
+
+        const updateCanvasSize = () => {
+             canvasWrapper.style.width = canvas.width + 'px';
+             canvasWrapper.style.height = canvas.height + 'px';
+        };
+        updateCanvasSize();
+
+        initTraffic();
+        initializeCityMap();
+        setupFirebase();
+        update();
+
+        // --- Mobile Control Setup (Reverted to D-pad buttons) ---
+        const controlButtons = document.querySelectorAll('.control-button');
+
+        // Function to simulate key down (press)
+        const pressControl = (key) => {
+            keys[key] = true;
+            // NEW: Reset heat decay timer whenever player initiates movement (W, A, S, D)
+            if (player.heat > 0) {
+                player.lastHeatGainTime = performance.now();
+            }
+        };
+
+        // Function to simulate key up (release)
+        const releaseControl = (key) => {
+            keys[key] = false;
+        };
+
+        controlButtons.forEach(button => {
+            const key = button.dataset.key;
+
+            // Handle touch start (button press)
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent scrolling/zooming
+                pressControl(key);
+            }, { passive: false });
+
+            // Handle touch end (button release)
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                releaseControl(key);
+            }, { passive: false });
+
+            // Fallback for mouse click/hold on desktop testing
+            button.addEventListener('mousedown', () => pressControl(key));
+            button.addEventListener('mouseup', () => releaseControl(key));
+            button.addEventListener('mouseleave', () => releaseControl(key));
+        });
+    };
+
+    // EXPOSE FUNCTIONS GLOBALLY (REQUIRED FOR HTML ONCLICK ATTRIBUTES)
+    window.startNewMission = startNewMission;
+    window.bribePolice = bribePolice;
+    window.hideOverlay = hideOverlay;
+    window.showMissionSelectOverlay = showMissionSelectOverlay;
+    window.recoverFromCrash = recoverFromCrash;
+    window.showGarageHub = showGarageHub;
+    window.showUpgradeShop = showUpgradeShop;
+    window.showCarDesignOverlay = showCarDesignOverlay;
+    window.buyUpgradeMaxSpeed = buyUpgradeMaxSpeed;
+    window.buyUpgradeHandling = buyUpgradeHandling;
+    window.buyCarColor = buyCarColor;
+    window.recoverFromHazard = recoverFromHazard;
+    window.startRandomEvent = startRandomEvent;
+    window.endEvent = endEvent;
+
+</script>
+
+</body>
+</html>
