@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: Multiplayer Lobby</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #00f0ff;
+        }
+        .modal-content {
+            border: 3px solid #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            background-color: rgba(13, 13, 30, 0.9);
+        }
+        .btn-action {
+            background-color: #ff007f;
+            color: #0d0d1e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-secondary {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+        }
+        input {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background-color: #0d0d1e;
+            border: 1px solid #00f0ff;
+            color: #ffffff;
+            width: 100%;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="modal-content">
+    <h1 class="text-2xl font-bold mb-4" id="overlay-title">Neon Multiplayer Lobby</h1>
+    <p class="mb-4 text-sm" id="status-message" style="color: yellow;">Status: Connecting...</p>
+
+    <div id="multiplayer-ui">
+
+        <div class="mb-6">
+            <button class="btn-action" onclick="window.createSession()">
+                Create Session (Get Code)
+            </button>
+        </div>
+
+        <div class="flex items-center space-x-2 mb-6">
+            <input type="text" id="joinCodeInput" placeholder="Enter session code" maxlength="6" />
+            <button class="btn-secondary" onclick="window.joinSession(document.getElementById('joinCodeInput').value)">Join</button>
+        </div>
+
+        <p class="text-lg font-bold mt-4" id="session-display"></p>
+    </div>
+
+    <div class="mt-8">
+        <a id="return-link" href="index.html" class="btn-secondary" style="display: block; text-decoration: none; text-align: center;">
+            Return to Game
+        </a>
+    </div>
+
+</div>
+
+<script type="module">
+    // --- IMPORT FUNCTIONS FROM EXTERNAL LOGIC FILE ---
+    import { setupFirebase, createSession, joinSession } from './multiplayer-logic.js';
+
+    // 1. Expose Imported Functions to the Window object so the HTML buttons can call them
+    window.createSession = createSession;
+    window.joinSession = joinSession;
+
+    // 2. Simple utility to display messages in this lobby
+    window.alert = (msg) => {
+        document.getElementById('session-display').textContent = msg;
+        document.getElementById('session-display').style.color = '#ff007f';
+    };
+
+    // 3. Start Firebase Initialization when this page loads
+    setupFirebase(() => {
+        // Callback run when Auth is complete
+        document.getElementById('status-message').textContent = 'Status: Ready.';
+        document.getElementById('status-message').style.color = '#00f0ff';
+    });
+
+</script>
+
+</body>
+</html>

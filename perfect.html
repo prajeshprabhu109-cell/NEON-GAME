@@ -79,6 +79,10 @@
         .shop-item:last-child {
             border-bottom: none;
         }
+        .shop-price {
+            min-width: 100px;
+            text-align: right;
+        }
 
         /* Color swatches */
         .color-swatch {
@@ -235,27 +239,12 @@
                 display: none;
             }
         }
-
-        /* Multiplayer hint button */
-        .multiplayer-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .session-code {
-            font-weight: bold;
-            color: #ffffff;
-            background: rgba(0,0,0,0.25);
-            padding: 4px 8px;
-            border-radius: 6px;
-            border: 1px solid #00f0ff;
-        }
     </style>
 </head>
 <body>
 
 <div class="game-container w-full">
+    <!-- Game HUD -->
     <div id="hud" class="w-full max-w-lg mb-4 p-3 rounded-xl hud-panel flex justify-between text-sm sm:text-base">
         <div>
             <span class="text-white">STATUS: </span><span id="statusText" class="text-green-400">IDLE</span>
@@ -269,36 +258,42 @@
          <div>
             <span class="text-white">TIME: </span><span id="timeText" class="text-cyan-400">--</span>
         </div>
+    
+        <a href="multiplayer.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">PLAY WITH FRIENDS</a>            <span id="currentSessionCode" class="session-code hidden" title="Active session code"></span>
 
-        <div class="multiplayer-controls">
-            <a href="multiplayer.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">PLAY WITH FRIENDS</a>            <span id="currentSessionCode" class="session-code hidden" title="Active session code"></span>
-        </div>
     </div>
 
+    <!-- Canvas Wrapper (Holds the game screen and the centered overlay) -->
     <div id="canvasWrapper" class="relative max-w-full">
         <canvas id="gameCanvas" width="800" height="450" class="rounded-lg max-w-full"></canvas>
 
+        <!-- NEW: Centralized Game Overlay/Modal -->
         <div id="gameOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden">
             <div id="modalContent" class="p-6 rounded-xl text-center w-11/12 pointer-events-auto">
                 <div id="overlayMessage" class="text-lg font-bold mb-4 text-white"></div>
                 <div id="overlayActions" class="flex justify-center space-x-4">
-                    </div>
+                    <!-- Buttons will be injected here -->
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Permanent Control Hint (Keyboard) -->
     <div class="w-full max-w-lg mt-4 text-xs text-gray-400 text-center permanent-controls-hint">
         Controls: W/Up (Accelerate), S/Down (Brake/Reverse), A/Left (Steer Left), D/Right (Steer Right)
     </div>
 </div>
 
+<!-- MOBILE BUTTON CONTROLS (REVERTED and Simplified) -->
 <div class="mobile-controls-wrapper">
     <div class="mobile-controls">
+        <!-- Left Side: Steering only (Left/Right) -->
         <div class="dpad-area">
             <div id="btn-left" data-key="a" class="control-button">←</div>
             <div id="btn-right" data-key="d" class="control-button">→</div>
         </div>
 
+        <!-- Right Side: Separate Throttle/Brake -->
         <div class="throttle-brake-area">
             <div id="btn-accel" data-key="w" class="control-button">↑</div>
             <div id="btn-brake" data-key="s" class="control-button">↓</div>
@@ -311,42 +306,20 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     // FIXED URL for getFirestore to 11.6.1 to match other versions
-    import {
-        getFirestore,
-        doc,
-        getDoc,
-        setDoc,
-        onSnapshot,
-        updateDoc,
-        deleteDoc,
-        serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ⭐ START: INJECTED AND CORRECTED FIREBASE CONFIGURATION ⭐
-    // Global configuration for Firebase (Hardcoded to ensure it runs correctly on localhost)
-    const firebaseConfig = {
-        apiKey: "AIzaSyBrtftJ8O5izi5vq6SwEeWtg87MaQvAcVM",
-        authDomain: "aianalyser-c0dd2.firebaseapp.com",
-        projectId: "aianalyser-c0dd2",
-        storageBucket: "aianalyser-c0dd2.firebasestorage.app",
-        messagingSenderId: "327749312228",
-        appId: "1:327749312228:web:c5d699a7f57d627a85d6f1",
-        measurementId: "G-8K8VY0KS70"
-    };
-
-    const appId = firebaseConfig.appId || 'default-app-id'; // Use the appId from the config
-    const initialAuthToken = null; // No custom token needed for local testing
+    // Global variables provided by the environment
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
     let app, db, auth;
     let userId = null;
     let isAuthReady = false;
-    // Check if the config has an API key to determine if Firebase setup is ready
-    let hasFirebase = Object.keys(firebaseConfig).length > 0 && !!firebaseConfig.apiKey;
-    // ⭐ END: INJECTED AND CORRECTED FIREBASE CONFIGURATION ⭐
+    let hasFirebase = Object.keys(firebaseConfig).length > 0; // Check if config exists
 
-
-    // Game state variables (existing)
+    // Game state variables
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const TILE_SIZE = 50;
@@ -368,6 +341,7 @@
 
     // NEW: Map Definition (COLS x ROWS grid) - Initialized later
     let cityMap = [];
+
 
     // Color definitions and costs (Re-integrated)
     const CAR_COLORS = [
@@ -437,17 +411,6 @@
     const policeCars = [];
     const NPC_COUNT = 5;
     const MAX_POLICE_CARS = 3;
-
-    // Multiplayer variables
-    let isMultiplayer = false;
-    let sessionCode = null;
-    let playerSlot = null; // 'player1' or 'player2'
-    let sessionRef = null;
-    let multiplayerUpdateInterval = null;
-    let opponentState = null;
-    let opponentLastSeen = 0;
-    const MULTIPLAYER_WRITE_MS = 120; // frequency of writing local player state to Firestore
-    const OPPONENT_TIMEOUT_MS = 8000; // consider opponent disconnected after this ms
 
     // --- ENTITY CLASS DEFINITIONS (Moved up to prevent ReferenceError) ---
 
@@ -580,23 +543,14 @@
             timeTextElement.classList.remove('text-red-500', 'text-yellow-500');
             timeTextElement.classList.add('text-cyan-400');
         }
-
-        // Show session code in HUD if active
-        const codeSpan = document.getElementById('currentSessionCode');
-        if (isMultiplayer && sessionCode) {
-            codeSpan.textContent = sessionCode.toUpperCase();
-            codeSpan.classList.remove('hidden');
-        } else {
-            codeSpan.classList.add('hidden');
-        }
     }
 
-    function drawCar(x, y, angle, colorOverride) {
+    function drawCar(x, y, angle) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
 
-        ctx.fillStyle = colorOverride || player.color;
+        ctx.fillStyle = player.color;
         ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
 
         ctx.fillStyle = '#ffff00';
@@ -708,6 +662,7 @@
 
 
     // --- GAME LOGIC FUNCTIONS ---
+
     function initTraffic() {
         for (let i = 0; i < NPC_COUNT; i++) {
             const horizontal = Math.random() > 0.5;
@@ -760,7 +715,7 @@
                 mission.active = false;
 
                 const message = `<span class="text-red-500">BUSTED!</span> You were intercepted by the police. Lost $${fine}. Heat cleared.`;
-                const action = `<a href="perfect.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">Continue</a>`;
+                const action = `<button class="btn-action uniform-button" onclick="showMissionSelectOverlay()">Continue</button>`;
                 showOverlay(message, action);
 
                 saveGameState();
@@ -917,13 +872,13 @@
             player.cash += event.reward;
 
             const message = `<span class="text-green-500">EVENT SUCCESS!</span> Retrieved $${event.reward}. Now, lose the police!`;
-            const action = `<a href="perfect.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">Continue</a>`;
+            const action = `<button class="btn-action uniform-button" onclick="hideOverlay()">Continue</button>`;
             showOverlay(message, action);
         } else if (result === 'expired') {
             player.heat = Math.max(0, player.heat - 2);
 
             const message = `<span class="text-yellow-500">EVENT EXPIRED.</span> The drop was retrieved by rivals. Heat slightly reduced.`;
-            const action = `<a href="perfect.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">Continue</a>`;
+            const action = `<button class="btn-secondary uniform-button" onclick="hideOverlay()">Continue</button>`;
             showOverlay(message, action);
         }
 
@@ -1068,7 +1023,7 @@
             return;
         }
 
-        const isOwned = colorData.cost === 0 || player.cash >= colorData.cost || index === player.colorIndex;
+        const isOwned = colorData.cost === 0 || player.cash >= colorData.cost;
 
         if (isOwned) {
             if (colorData.cost > 0) {
@@ -1245,9 +1200,9 @@
          if (canAfford) {
              message = `<span class="text-yellow-400">STATUS: HEAT ${player.heat}</span>. Bribe the officer for $${bribeCost} to reduce risk.`;
              actions = `
-                 <button class="btn-action" onclick="bribePolice(); hideOverlay()">Pay Bribe</button>
-                 <button class="btn-action" onclick="hideOverlay()">Keep Running</button>
-               `;
+                <button class="btn-action" onclick="bribePolice(); hideOverlay()">Pay Bribe</button>
+                <button class="btn-action" onclick="hideOverlay()">Keep Running</button>
+             `;
          } else {
              message = `<span class="text-red-400">STATUS: HEAT ${player.heat}</span>. Police are closing in, but you can't afford a bribe ($${bribeCost} needed).`;
              actions = `<button class="btn-action" onclick="hideOverlay()">Keep Running</button>`;
@@ -1399,19 +1354,6 @@
 
         npcCars.forEach(car => car.draw());
         policeCars.forEach(car => car.draw());
-
-        // Draw opponent if in multiplayer and opponent state exists
-        if (isMultiplayer && opponentState && performance.now() - opponentLastSeen < OPPONENT_TIMEOUT_MS) {
-            // If opponent has color, angle etc. draw them
-            drawCar(opponentState.x, opponentState.y, opponentState.angle, opponentState.color || '#00ff00');
-
-            // small label for opponent
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '12px Roboto Mono';
-            ctx.textAlign = 'center';
-            ctx.fillText('FRIEND', opponentState.x, opponentState.y - 18);
-        }
-
         drawCar(player.x, player.y, player.angle);
 
         if (!overlayVisible) {
@@ -1420,7 +1362,7 @@
         requestAnimationFrame(update);
     }
 
-    // --- FIRESTORE / MULTIPLAYER HELPERS ---
+    // --- FIREBASE / INIT HELPERS ---
 
     function generateRandomTarget() {
         const corners = [
@@ -1485,8 +1427,8 @@
         for (let r = ROWS - 4; r < ROWS; r++) {
             for (let c = COLS - 3; c < COLS; c++) {
                  if (cityMap[r][c] === TERRAIN_TYPE.BLOCK) {
-                     cityMap[r][c] = TERRAIN_TYPE.WATER;
-                 }
+                    cityMap[r][c] = TERRAIN_TYPE.WATER;
+                }
             }
         }
     }
@@ -1528,7 +1470,7 @@
         }
     }
 
-    // Firestore Functions for saving game state (existing)
+    // Firestore Functions
     const getDocRef = (uid) => doc(db, `artifacts/${appId}/users/${uid}/game_data`, 'main_save');
 
     async function loadGameState() {
@@ -1576,269 +1518,6 @@
         } catch (error) {
             console.error("Error saving game state:", error);
         }
-    }
-
-    // --- MULTIPLAYER: session utilities ---
-
-    // helper: random 6-character code
-    function makeSessionCode() {
-        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // avoid ambiguous chars
-        let out = '';
-        for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
-        return out.toLowerCase();
-    }
-
-    // session doc path: multiplayer/{appId}/sessions/{code}
-    function getSessionDoc(code) {
-        return doc(db, `multiplayer/${appId}/sessions/${code}`);
-    }
-
-    // create a new session (host)
-    async function createSession() {
-        if (!hasFirebase || !isAuthReady) {
-            // This is the pop-up shown in the image, now triggered only if config is truly missing/invalid
-            alert('Multiplayer requires Firebase. Configure firebaseConfig first.');
-            return;
-        }
-        if (isMultiplayer) {
-            alert('Already in a multiplayer session. Leave first to create a new one.');
-            return;
-        }
-        const code = makeSessionCode();
-        const docRef = getSessionDoc(code);
-
-        const sessionData = {
-            createdAt: serverTimestamp(),
-            hostId: userId,
-            player1: {
-                uid: userId,
-                x: player.x,
-                y: player.y,
-                angle: player.angle,
-                speed: player.speed,
-                color: player.color,
-                lastUpdate: Date.now()
-            },
-            player2: null,
-            started: false
-        };
-
-        try {
-            await setDoc(docRef, sessionData);
-            // set local state to host
-            sessionCode = code;
-            sessionRef = docRef;
-            playerSlot = 'player1';
-            isMultiplayer = true;
-            setupSessionListener();
-            startMultiplayerUpdates();
-            showOverlay(`<div>Session created.<br>Code: <strong>${code.toUpperCase()}</strong></div>`, `<div class="flex flex-col space-y-2"><button class="btn-action uniform-button" onclick="hideOverlay()">OK</button><button class="btn-secondary uniform-button" onclick="leaveSession()">Leave Session</button></div>`);
-            updateHUD();
-        } catch (err) {
-            console.error('Error creating session:', err);
-            alert('Failed to create session. See console.');
-        }
-    }
-
-    // join existing session by code
-    async function joinSession(codeInput) {
-        if (!hasFirebase || !isAuthReady) {
-            alert('Multiplayer requires Firebase. Configure firebaseConfig first.');
-            return;
-        }
-        if (isMultiplayer) {
-            alert('Already in a multiplayer session. Leave first to join another.');
-            return;
-        }
-        const code = (codeInput || '').toLowerCase().trim();
-        if (!code) {
-            alert('Please enter a valid session code.');
-            return;
-        }
-        const docRef = getSessionDoc(code);
-
-        try {
-            const snap = await getDoc(docRef);
-            if (!snap.exists()) {
-                alert('No session found with that code.');
-                return;
-            }
-            const data = snap.data();
-
-            // if player2 slot empty, join as player2
-            if (!data.player2) {
-                await updateDoc(docRef, {
-                    player2: {
-                        uid: userId,
-                        x: player.x,
-                        y: player.y,
-                        angle: player.angle,
-                        speed: player.speed,
-                        color: player.color,
-                        lastUpdate: Date.now()
-                    }
-                });
-                sessionCode = code;
-                sessionRef = docRef;
-                playerSlot = 'player2';
-                isMultiplayer = true;
-                setupSessionListener();
-                startMultiplayerUpdates();
-                showOverlay(`<div>Joined session <strong>${code.toUpperCase()}</strong> — have fun!</div>`, `<div class="flex flex-col space-y-2"><button class="btn-action uniform-button" onclick="hideOverlay()">OK</button><button class="btn-secondary uniform-button" onclick="leaveSession()">Leave Session</button></div>`);
-                updateHUD();
-            } else {
-                alert('Session is full (already has 2 players).');
-            }
-        } catch (err) {
-            console.error('Error joining session:', err);
-            alert('Failed to join session. See console.');
-        }
-    }
-
-    // set up real-time listener for the session doc
-    let sessionUnsubscribe = null;
-    function setupSessionListener() {
-        if (!sessionRef) return;
-        if (sessionUnsubscribe) sessionUnsubscribe();
-
-        sessionUnsubscribe = onSnapshot(sessionRef, (snap) => {
-            if (!snap.exists()) {
-                // session removed
-                console.log('Session was removed.');
-                stopMultiplayer('Session closed.');
-                return;
-            }
-            const data = snap.data();
-
-            // determine opponent slot and read their state
-            const mySlot = playerSlot;
-            const oppSlot = mySlot === 'player1' ? 'player2' : 'player1';
-            const opp = data[oppSlot];
-
-            if (opp && opp.uid && opp.uid !== userId) {
-                opponentState = {
-                    x: opp.x,
-                    y: opp.y,
-                    angle: opp.angle,
-                    speed: opp.speed,
-                    color: opp.color
-                };
-                opponentLastSeen = performance.now();
-            }
-
-            // if other player left, set opponentState null
-            if (!opp || !opp.uid) {
-                opponentState = null;
-            }
-        }, (err) => {
-            console.error('Session snapshot error:', err);
-        });
-    }
-
-    // write local player state to session doc at a throttled interval
-    function startMultiplayerUpdates() {
-        if (!isMultiplayer || !sessionRef || !playerSlot) return;
-        stopMultiplayerUpdates(); // safety
-
-        const writeData = async () => {
-            if (!sessionRef || !playerSlot) return;
-            try {
-                const payload = {
-                    uid: userId,
-                    x: player.x,
-                    y: player.y,
-                    angle: player.angle,
-                    speed: player.speed,
-                    color: player.color,
-                    lastUpdate: Date.now()
-                };
-                const updateObj = {};
-                updateObj[playerSlot] = payload;
-                await updateDoc(sessionRef, updateObj);
-            } catch (err) {
-                console.error('Error writing multiplayer state:', err);
-            }
-        };
-
-        // initial write
-        writeData();
-
-        // repeating interval
-        multiplayerUpdateInterval = setInterval(() => {
-            // only write when playing (reduce writes if overlay visible)
-            if (!document.getElementById('gameOverlay').classList.contains('hidden')) return;
-            writeData();
-        }, MULTIPLAYER_WRITE_MS);
-    }
-
-    function stopMultiplayerUpdates() {
-        if (multiplayerUpdateInterval) {
-            clearInterval(multiplayerUpdateInterval);
-            multiplayerUpdateInterval = null;
-        }
-    }
-
-    // leave session / cleanup
-    async function leaveSession() {
-        // if not in session, nothing to do
-        if (!isMultiplayer || !sessionRef || !playerSlot) {
-            isMultiplayer = false;
-            sessionCode = null;
-            playerSlot = null;
-            sessionRef = null;
-            opponentState = null;
-            updateHUD();
-            return;
-        }
-
-        // remove our slot from session doc
-        try {
-            const emptyObj = {};
-            emptyObj[playerSlot] = null;
-            await updateDoc(sessionRef, emptyObj);
-
-            // if both players gone, delete session (best-effort)
-            const snap = await getDoc(sessionRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                if (!data.player1 && !data.player2) {
-                    try {
-                        await deleteDoc(sessionRef);
-                    } catch (err) {
-                        // ignore
-                    }
-                }
-            }
-        } catch (err) {
-            console.warn('Error leaving session:', err);
-        }
-
-        // stop listeners and updates
-        if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
-        stopMultiplayerUpdates();
-
-        isMultiplayer = false;
-        sessionCode = null;
-        playerSlot = null;
-        sessionRef = null;
-        opponentState = null;
-        updateHUD();
-        hideOverlay();
-    }
-
-    function stopMultiplayer(msg) {
-        // generic stop: show optional alert and cleanup
-        if (msg) {
-            showOverlay(`<div>${msg}</div>`, `<button class="btn-action uniform-button" onclick="hideOverlay()">OK</button>`);
-        }
-        if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
-        stopMultiplayerUpdates();
-        isMultiplayer = false;
-        sessionCode = null;
-        playerSlot = null;
-        sessionRef = null;
-        opponentState = null;
-        updateHUD();
     }
 
     // --- UPGRADE LOGIC ---
@@ -1938,47 +1617,6 @@
     window.recoverFromHazard = recoverFromHazard;
     window.startRandomEvent = startRandomEvent;
     window.endEvent = endEvent;
-
-    // MULTIPLAYER UI bindings
-    window.showMultiplayerOverlay = function() {
-        // Minimal UI with Create and Join fields
-        const content = `
-            <p class="text-sm text-white mb-2">Play With Friends — Create a session or join with a code.</p>
-            <div class="flex flex-col space-y-2">
-                <button class="btn-action uniform-button" onclick="createSession()">Create (Get Code)</button>
-                <div class="flex space-x-2">
-                    <input id="joinCodeInput" placeholder="Enter code" class="p-2 rounded-lg bg-[#0f0f1a] text-white w-full" />
-                    <button class="btn-secondary" onclick="(function(){ const v=document.getElementById('joinCodeInput').value; joinSession(v); })()">Join</button>
-                </div>
-                <button class="btn-secondary mt-2 uniform-button" onclick="hideOverlay()">Cancel</button>
-            </div>
-        `;
-        showOverlay('', content);
-    };
-
-    window.createSession = createSession;
-    window.joinSession = joinSession;
-    window.leaveSession = leaveSession;
-
-    // Cleanup when page unloads
-    window.addEventListener('beforeunload', async (e) => {
-        try {
-            if (isMultiplayer && sessionRef && playerSlot) {
-                const emptyObj = {};
-                emptyObj[playerSlot] = null;
-                await updateDoc(sessionRef, emptyObj);
-            }
-        } catch (err) {
-            // ignore
-        }
-    });
-
-    // Periodic check: if opponent hasn't been seen for long, clear opponentState
-    setInterval(() => {
-        if (isMultiplayer && opponentState && performance.now() - opponentLastSeen > OPPONENT_TIMEOUT_MS) {
-            opponentState = null;
-        }
-    }, 1000);
 
 </script>
 
