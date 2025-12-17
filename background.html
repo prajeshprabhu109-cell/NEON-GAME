@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: City Grid - Music Wrapper</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            background-color: #0d0d1e; overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* The Game window */
+        iframe {
+            width: 100%; height: 100%;
+            border: none; display: block;
+        }
+
+        /* Initial Start Screen - Ensures one-time music trigger */
+        #start-gate {
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 13, 30, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            cursor: pointer;
+        }
+
+        .neon-btn {
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px #00f0ff;
+            background: transparent;
+        }
+
+        /* Mute Button - Only appears after game starts */
+        #mute-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ff007f;
+            color: #ff007f;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none; /* Hidden until game starts */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-gate" onclick="launchGame()">
+        <button class="neon-btn">Start City Grid</button>
+        <p style="color: #ff007f; margin-top: 15px; font-size: 12px;">MUSIC WILL PLAY AUTOMATICALLY</p>
+    </div>
+
+    <audio id="bgMusic" loop>
+        <source src="music7 (1).mp4" type="video/mp4">
+    </audio>
+
+    <div id="mute-btn" onclick="toggleMute()">🔊 MUTE MUSIC</div>
+
+    <iframe id="gameFrame" src="perfect.html"></iframe>
+
+    <script>
+        const music = document.getElementById('bgMusic');
+        const gate = document.getElementById('start-gate');
+        const muteBtn = document.getElementById('mute-btn');
+        const frame = document.getElementById('gameFrame');
+
+        let isMusicPlaying = false;
+
+        function launchGame() {
+            if (!isMusicPlaying) {
+                music.play().catch(e => console.log("User interaction required"));
+                isMusicPlaying = true;
+
+                // UI Changes
+                gate.style.display = 'none';
+                muteBtn.style.display = 'block';
+
+                // Focus the iframe so car controls work immediately
+                frame.focus();
+            }
+        }
+
+        function toggleMute() {
+            // Strictly toggles the muted property of the ALREADY playing song
+            if (music.muted) {
+                music.muted = false;
+                muteBtn.innerText = "🔊 MUTE MUSIC";
+                muteBtn.style.color = "#ff007f";
+                muteBtn.style.borderColor = "#ff007f";
+            } else {
+                music.muted = true;
+                muteBtn.innerText = "🔈 UNMUTE MUSIC";
+                muteBtn.style.color = "#555";
+                muteBtn.style.borderColor = "#555";
+            }
+        }
+
+        // --- CRITICAL FIX: Navigation Detection ---
+        // This stops the music if the user navigates to clubs.html inside the iframe
+        setInterval(() => {
+            try {
+                const currentPath = frame.contentWindow.location.pathname;
+                if (currentPath.includes("clubs.html")) {
+                    music.pause();
+                    muteBtn.style.display = 'none';
+                }
+            } catch (e) {
+                // If the iframe navigates to an external site or a path we can't read,
+                // we assume they left the game and pause the music.
+            }
+        }, 500);
+    </script>
+</body>
+</html>
