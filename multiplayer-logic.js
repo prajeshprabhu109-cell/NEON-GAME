@@ -1,7 +1,6 @@
 // ====================================================================
 // FILE: multiplayer-logic.js
-// Handles ALL Firebase RTDB connectivity and multiplayer logic.
-// This is imported by both index.html and multiplayer.html.
+// Handles ALL Firebase RTDB connectivity and logic.
 // ====================================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -36,7 +35,6 @@ let isAuthReady = false;
 let hasFirebase = Object.keys(firebaseConfig).length > 0 && !!firebaseConfig.apiKey;
 
 // --- Multiplayer State (EXPOSED GLOBALS) ---
-// These are attached to the window object for easy access by HTML and other scripts.
 window.isMultiplayer = false;
 window.sessionCode = null;
 window.playerSlot = null;
@@ -59,7 +57,7 @@ function makeSessionCode() {
     return out.toLowerCase();
 }
 
-// Dummy player template for session creation (to be overwritten by actual game data)
+// Dummy player template for session creation
 const PLAYER_TEMPLATE = {
     x: 400, y: 225, angle: 0, speed: 0, color: '#ff007f', heat: 0
 };
@@ -94,7 +92,7 @@ export function setupFirebase(onReadyCallback) {
 }
 
 export async function createSession() {
-    // We assume the main game's player object is accessible via window.player
+    // We try to get the player object from the main game window; otherwise, use the dummy template.
     const player = window.player || PLAYER_TEMPLATE;
 
     if (!isAuthReady || !rtdb || window.isMultiplayer) {
@@ -122,36 +120,35 @@ export async function createSession() {
         setupSessionListener(sessionRef);
         startMultiplayerUpdates(sessionRef, player);
 
-        // Use exposed HUD update function
-        if (window.updateHUD) window.updateHUD();
-        if (window.showOverlay) window.showOverlay(`<div>Session created.<br>Code: <strong>${code.toUpperCase()}</strong></div>`, `<div class="flex flex-col space-y-2"><button class="btn-action uniform-button" onclick="window.hideOverlay()">OK</button><button class="btn-secondary uniform-button" onclick="window.leaveSession()">Leave Session</button></div>`);
-        else alert(`Session created! Code: ${code.toUpperCase()}`);
+        // Update lobby display
+        document.getElementById('session-display').textContent = `Session created! Code: ${code.toUpperCase()}`;
+        document.getElementById('status-message').textContent = 'Status: Active';
+
+        // This should navigate back to the main game if you want the game loop to resume
+        // window.location.href = 'index.html';
 
     } catch (err) {
         console.error('Error creating session:', err);
-        window.alert('Failed to create session. Check DB Rules.');
+        document.getElementById('session-display').textContent = 'Failed to create session. Check DB Rules.';
+        document.getElementById('session-display').style.color = '#ff007f';
     }
 }
 
-export async function joinSession() {
-    const codeInput = document.getElementById('joinCodeInput').value;
+export async function joinSession(codeInput) {
+    const code = (codeInput || '').toLowerCase().trim();
     const player = window.player || PLAYER_TEMPLATE;
 
-    if (!isAuthReady || !rtdb || window.isMultiplayer) {
-        window.alert('Multiplayer not ready or already active.');
+    if (!isAuthReady || !rtdb || window.isMultiplayer || !code) {
+        document.getElementById('session-display').textContent = 'Error: Enter a code first.';
         return;
     }
-    const code = (codeInput || '').toLowerCase().trim();
-    if (!code) {
-        window.alert('Please enter a valid session code.');
-        return;
-    }
+
     const sessionRef = getSessionRef(code);
 
     try {
         const snap = await get(sessionRef);
         if (!snap.exists()) {
-            window.alert('Error: Session not found.');
+            document.getElementById('session-display').textContent = 'Error: Session not found.';
             return;
         }
         const data = snap.val();
@@ -169,17 +166,19 @@ export async function joinSession() {
             setupSessionListener(sessionRef);
             startMultiplayerUpdates(sessionRef, player);
 
-            if (window.showOverlay) window.showOverlay(`<div>Joined session <strong>${code.toUpperCase()}</strong>!</div>`, `<div class="flex flex-col space-y-2"><button class="btn-action uniform-button" onclick="window.hideOverlay()">OK</button><button class="btn-secondary uniform-button" onclick="window.leaveSession()">Leave Session</button></div>`);
-            else alert(`Joined session! Code: ${code.toUpperCase()}`);
+            document.getElementById('session-display').textContent = `Joined session! Code: ${code.toUpperCase()}`;
+            document.getElementById('status-message').textContent = 'Status: Active';
 
-            if (window.updateHUD) window.updateHUD();
+            // This should navigate back to the main game if you want the game loop to resume
+            // window.location.href = 'index.html';
 
         } else {
-            window.alert('Error: Session is full.');
+            document.getElementById('session-display').textContent = 'Error: Session is full.';
+            document.getElementById('session-display').style.color = '#ff007f';
         }
     } catch (err) {
         console.error('Error joining session:', err);
-        window.alert('Failed to join session. Check DB Rules.');
+        document.getElementById('session-display').textContent = 'Failed to join session. Check console.';
     }
 }
 
@@ -202,7 +201,6 @@ export async function leaveSession() {
         console.warn('Error leaving session:', err);
     }
 
-    // Reset local state and listeners
     if (window.sessionUnsubscribe) { window.sessionUnsubscribe(); window.sessionUnsubscribe = null; }
     stopMultiplayerUpdates();
 
@@ -211,8 +209,8 @@ export async function leaveSession() {
     window.playerSlot = null;
     window.sessionRef = null;
     window.opponentState = null;
-    if (window.updateHUD) window.updateHUD();
-    if (window.hideOverlay) window.hideOverlay();
+    document.getElementById('session-display').textContent = 'Session terminated.';
+    document.getElementById('status-message').textContent = 'Status: Ready.';
 }
 
 
@@ -221,10 +219,12 @@ export async function leaveSession() {
 let sessionUnsubscribe = null;
 function setupSessionListener(sessionRef) {
     if (sessionUnsubscribe) sessionUnsubscribe();
+
     sessionUnsubscribe = onValue(sessionRef, (snap) => {
         if (!snap.exists()) {
-            if (window.stopMultiplayer) window.stopMultiplayer('Session closed.');
-            else window.alert('Session closed by host.');
+            window.leaveSession();
+            document.getElementById('session-display').textContent = 'Session closed by host.';
+            document.getElementById('status-message').textContent = 'Status: Ready.';
             return;
         }
         const data = snap.val();
@@ -234,11 +234,7 @@ function setupSessionListener(sessionRef) {
 
         if (opp && opp.uid && opp.uid !== userId) {
             window.opponentState = {
-                x: opp.x,
-                y: opp.y,
-                angle: opp.angle,
-                speed: opp.speed,
-                color: opp.color
+                x: opp.x, y: opp.y, angle: opp.angle, speed: opp.speed, color: opp.color
             };
             window.opponentLastSeen = performance.now();
         }
@@ -257,13 +253,7 @@ function startMultiplayerUpdates(sessionRef, player) {
         if (!sessionRef || !window.playerSlot) return;
         try {
             const payload = {
-                uid: userId,
-                x: player.x,
-                y: player.y,
-                angle: player.angle,
-                speed: player.speed,
-                color: player.color,
-                lastUpdate: Date.now()
+                uid: userId, x: player.x, y: player.y, angle: player.angle, speed: player.speed, color: player.color, lastUpdate: Date.now()
             };
             const updateObj = {};
             updateObj[window.playerSlot] = payload;
@@ -276,7 +266,6 @@ function startMultiplayerUpdates(sessionRef, player) {
     writeData();
 
     window.multiplayerUpdateInterval = setInterval(() => {
-        if (document.getElementById('gameOverlay') && !document.getElementById('gameOverlay').classList.contains('hidden')) return;
         writeData();
     }, MULTIPLAYER_WRITE_MS);
 }
@@ -287,10 +276,3 @@ function stopMultiplayerUpdates() {
         window.multiplayerUpdateInterval = null;
     }
 }
-
-// Periodic check: if opponent hasn't been seen for long, clear opponentState
-setInterval(() => {
-    if (window.isMultiplayer && window.opponentState && performance.now() - window.opponentLastSeen > OPPONENT_TIMEOUT_MS) {
-        window.opponentState = null;
-    }
-}, 1000);

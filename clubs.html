@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON HUSTLE: CLUBS HUB PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1e;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #00f0ff;
+            overflow: hidden;
+        }
+        .betting-hub {
+            background-color: rgba(13, 13, 30, 0.98);
+            border: 4px solid #00f0ff;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.6);
+            width: 95%;
+            max-width: 440px;
+            max-height: 92vh;
+            padding: 2rem;
+            border-radius: 2rem;
+            text-align: center;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        #hubTitle { text-shadow: 0 0 10px #00f0ff; }
+        .section-title {
+            color: #00f0ff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 1.5rem;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(0, 240, 255, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .btn-group { display: flex; gap: 10px; margin: 10px 0; }
+        .btn-game {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-neon-pink { background: #ff007f; color: #fff; box-shadow: 0 4px #b8005b; }
+        .btn-neon-cyan { background: #00f0ff; color: #0d0d1e; box-shadow: 0 4px #00aaff; }
+        .btn-neon-purple { background: #7000ff; color: #fff; box-shadow: 0 4px #4b00ab; }
+        .btn-neon-green { background: #39ff14; color: #0d0d1e; box-shadow: 0 4px #28b80e; }
+
+        .leaderboard-container {
+            background: rgba(0,0,0,0.5);
+            border-radius: 15px;
+            padding: 10px;
+            margin-top: 15px;
+        }
+        .leader-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+        }
+
+        #muteBtn {
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: #ff007f;
+            text-decoration: underline;
+            margin-bottom: 10px;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .betting-hub::-webkit-scrollbar { width: 4px; }
+        .betting-hub::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="betting-hub">
+    <h1 id="hubTitle" class="text-3xl font-bold text-white italic">NEON HUSTLE</h1>
+
+    <div id="muteBtn" onclick="toggleMute()">🔈 MUTE MUSIC</div>
+
+    <div id="userProfile" class="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
+        <button id="loginBtn" class="w-full py-2 bg-blue-600 rounded-lg text-xs font-bold text-white">SIGN IN WITH GOOGLE</button>
+    </div>
+
+    <div class="mt-4">
+        <span class="text-gray-400 text-xs font-bold">TOTAL EARNED CASH</span>
+        <div class="text-3xl font-bold text-green-400">$<span id="balanceDisplay">5000</span></div>
+    </div>
+
+    <div class="section-title">Sports Bar & Arcade</div>
+    <div class="btn-group">
+        <a href="ball.html" class="btn-game btn-neon-cyan">🎱 8-BALL POOL</a>
+        <a href="air.html" class="btn-game btn-neon-pink">🏑 AIR HOCKEY</a>
+    </div>
+    <div class="btn-group">
+        <a href="skee.html" class="btn-game btn-neon-pink">⚪ SKEE-BALL</a>
+        <a href="bask.html" class="btn-game btn-neon-purple">🏀 POP-A-SHOT</a>
+    </div>
+    <div class="btn-group">
+        <a href="pin.html" class="btn-game btn-neon-green">🕹️ NEON PINBALL</a>
+        <a href="dart.html" class="btn-game btn-neon-purple">🎯 DARTS</a>
+    </div>
+
+    <div class="section-title">The High Roller Suite</div>
+
+    <div class="text-[10px] text-gray-400 mt-2">CAR RACING</div>
+    <div class="btn-group">
+        <a href="race.html" class="btn-game btn-neon-pink">🏎️ JOIN RACE</a>
+        <a href="race-bet.html" class="btn-game btn-neon-cyan">💰 BET ON CARS</a>
+    </div>
+
+    <div class="text-[10px] text-gray-400 mt-2">HORSE RACING</div>
+    <div class="btn-group">
+        <a href="race2.html" class="btn-game btn-neon-pink">🐎 JOIN RACE</a>
+        <a href="horse-bet.html" class="btn-game btn-neon-cyan">💰 BET ON HORSES</a>
+    </div>
+
+    <div class="btn-group">
+        <a href="casino.html" class="btn-game btn-neon-cyan" style="width: 100%;">🎰 ROULETTE</a>
+        <a href="slot.html" class="btn-game btn-neon-green" style="width: 100%;">💎 SLOTS</a>
+    </div>
+
+    <div class="section-title">Global Top 5</div>
+    <div class="leaderboard-container" id="leaderboardList">
+        <p class="text-[10px] text-gray-500">Syncing rankings...</p>
+    </div>
+
+    <a href="background.html" target="_top" class="mt-6 block text-gray-500 hover:text-cyan-400 font-bold text-xs">← RETURN TO CITY GRID</a>
+</div>
+
+<video id="clubMusic" loop playsinline autoplay style="display:none;">
+    <source src="music1 (1).mp4" type="video/mp4">
+</video>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getDatabase, ref, get, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const provider = new GoogleAuthProvider();
+
+    const balanceDisplay = document.getElementById('balanceDisplay');
+    const userProfile = document.getElementById('userProfile');
+    const leaderboardList = document.getElementById('leaderboardList');
+    const music = document.getElementById('clubMusic');
+
+    window.toggleMute = function() {
+        if (music.muted) {
+            music.muted = false;
+            document.getElementById('muteBtn').innerText = "🔈 MUTE MUSIC";
+            document.getElementById('muteBtn').style.color = "#ff007f";
+        } else {
+            music.muted = true;
+            document.getElementById('muteBtn').innerText = "🔊 UNMUTE MUSIC";
+            document.getElementById('muteBtn').style.color = "#00f0ff";
+        }
+    };
+
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        signInWithRedirect(auth, provider);
+    });
+
+    getRedirectResult(auth).catch((error) => console.error("Login Error:", error));
+
+    function refreshCashUI() {
+        let cash = localStorage.getItem('currentPlayerCash');
+        if (cash === null) {
+            cash = 5000;
+            localStorage.setItem('currentPlayerCash', 5000);
+        }
+        balanceDisplay.innerText = cash;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            userProfile.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <img src="${user.photoURL}" class="w-8 h-8 rounded-full border border-cyan-400">
+                    <div class="text-left"><div class="text-[9px] text-gray-500">PLAYER</div><div class="text-xs font-bold text-white">${user.displayName.toUpperCase()}</div></div>
+                </div>`;
+
+            const userRef = ref(db, 'users/' + user.uid);
+            const snapshot = await get(userRef);
+            let cash = parseInt(localStorage.getItem('currentPlayerCash'));
+
+            if (snapshot.exists()) {
+                cash = snapshot.val().cash;
+            } else {
+                await set(userRef, { name: user.displayName, cash: cash });
+            }
+            localStorage.setItem('currentPlayerCash', cash);
+            balanceDisplay.innerText = cash;
+            update(ref(db, 'leaderboard/' + user.uid), { name: user.displayName, cash: cash });
+        }
+        refreshCashUI();
+    });
+
+    onValue(ref(db, 'leaderboard'), (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            const players = Object.values(data).sort((a, b) => b.cash - a.cash).slice(0, 5);
+            leaderboardList.innerHTML = players.map((p, i) => `
+                <div class="leader-row">
+                    <span>${i+1}. ${p.name.split(' ')[0]}</span>
+                    <span class="text-green-400 font-bold">$${p.cash}</span>
+                </div>`).join('');
+        }
+    });
+
+    document.body.addEventListener('click', () => music.play(), { once: true });
+    refreshCashUI();
+</script>
+</body>
+</html>

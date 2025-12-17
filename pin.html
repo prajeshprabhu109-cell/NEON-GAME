@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: Pinball Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1e;
+            color: #00f0ff;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            margin: 0;
+            padding: 10px 0;
+            overflow: hidden;
+        }
+
+        #gameHeader { text-align: center; }
+
+        #gameWrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 68vh; /* Optimized for single-screen fit */
+        }
+
+        canvas {
+            background: #050510;
+            border: 3px solid #00f0ff; /* Single line border */
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+            height: 100%;
+            width: auto;
+        }
+
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .btn-reset {
+            background-color: #ff007f;
+            color: white;
+            font-weight: bold;
+            padding: 10px 30px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 4px #b8005b;
+            border: none;
+        }
+
+        .controls-hint {
+            color: #555;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .back-link {
+            color: #555;
+            font-size: 13px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: #00f0ff; }
+    </style>
+</head>
+<body>
+
+    <div id="gameHeader">
+        <h1 class="text-2xl font-bold text-cyan-400">NEON PINBALL</h1>
+        <div class="text-green-400 font-bold">CASH: $<span id="balanceDisplay">0</span></div>
+    </div>
+
+    <div id="gameWrapper">
+        <canvas id="pinCanvas" width="400" height="700"></canvas>
+    </div>
+
+    <div class="controls-container">
+        <button class="btn-reset" onclick="launchBall()">LAUNCH BALL ($100)</button>
+        <div class="controls-hint">KEYS: [A] LEFT | [D] RIGHT</div>
+        <a href="clubs.html" target="_top" class="back-link">← BACK TO CLUBS</a>
+    </div>
+
+<script>
+    const canvas = document.getElementById('pinCanvas');
+    const ctx = canvas.getContext('2d');
+    const balanceDisplay = document.getElementById('balanceDisplay');
+
+    let ball = { x: 375, y: 650, vx: 0, vy: 0, radius: 10, active: false };
+    const gravity = 0.38;
+    const friction = 0.99;
+
+    let leftFlipper = { x: 140, y: 640, angle: 0.6, baseAngle: 0.6, upAngle: -0.4, length: 75, active: false };
+    let rightFlipper = { x: 260, y: 640, angle: -0.6, baseAngle: -0.6, upAngle: 0.4, length: 75, active: false };
+
+    const bumpers = [
+        { x: 130, y: 180, r: 25, color: '#ff007f', score: 500 }, // Targeted Pink Bumper
+        { x: 270, y: 180, r: 25, color: '#ff007f', score: 500 },
+        { x: 200, y: 320, r: 35, color: '#39ff14', score: 1000 }
+    ];
+
+    const keys = {};
+
+    function updateCash(amt) {
+        let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 5000;
+        cash += amt;
+        localStorage.setItem('currentPlayerCash', cash);
+        balanceDisplay.innerText = cash;
+    }
+
+    function launchBall() {
+        if (ball.active) return;
+        let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 0;
+        if (cash < 100) return alert("Not enough cash!");
+
+        updateCash(-100);
+        // Adjusted launch trajectory to hit the pink bumper
+        ball = { x: 375, y: 650, vx: -10, vy: -28, radius: 10, active: true };
+    }
+
+    function drawFlipper(f, isLeft) {
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.rotate(f.angle);
+        ctx.lineCap = "round";
+        ctx.lineWidth = 14;
+        ctx.strokeStyle = "#00f0ff";
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#00f0ff";
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(isLeft ? -f.length : f.length, 0);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        leftFlipper.active = keys['a'];
+        rightFlipper.active = keys['d'];
+
+        const targetL = leftFlipper.active ? leftFlipper.upAngle : leftFlipper.baseAngle;
+        const targetR = rightFlipper.active ? rightFlipper.upAngle : rightFlipper.baseAngle;
+        leftFlipper.angle += (targetL - leftFlipper.angle) * 0.5;
+        rightFlipper.angle += (targetR - rightFlipper.angle) * 0.5;
+
+        // Draw Single Line border
+        ctx.strokeStyle = "#00f0ff";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+
+        bumpers.forEach(b => {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.strokeStyle = b.color;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = b.color;
+            ctx.stroke();
+            ctx.fillStyle = "rgba(0,0,0,0.4)";
+            ctx.fill();
+
+            let dist = Math.hypot(ball.x - b.x, ball.y - b.y);
+            if (dist < b.r + ball.radius) {
+                let angle = Math.atan2(ball.y - b.y, ball.x - b.x);
+                ball.vx = Math.cos(angle) * 15;
+                ball.vy = Math.sin(angle) * 15;
+                updateCash(b.score);
+            }
+        });
+        ctx.shadowBlur = 0;
+
+        if (ball.active) {
+            ball.vy += gravity;
+            ball.vx *= friction;
+            ball.vy *= friction;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            if (ball.x < 15) { ball.vx *= -0.8; ball.x = 15; }
+            if (ball.x > 385) { ball.vx *= -0.8; ball.x = 385; }
+            if (ball.y < 15) { ball.vy *= -0.8; ball.y = 15; }
+
+            [leftFlipper, rightFlipper].forEach(f => {
+                let dist = Math.hypot(ball.x - f.x, ball.y - f.y);
+                if (dist < f.length + ball.radius && ball.y > f.y - 15 && ball.y < f.y + 15) {
+                    ball.vy = f.active ? -18 : -ball.vy * 0.6;
+                    ball.vx += f.active ? (ball.x < 200 ? -5 : 5) : 0;
+                }
+            });
+
+            if (ball.y > canvas.height) {
+                ball.active = false;
+                ball.x = 375; ball.y = 650;
+            }
+        }
+
+        drawFlipper(leftFlipper, true);
+        drawFlipper(rightFlipper, false);
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#fff";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        requestAnimationFrame(loop);
+    }
+
+    window.onkeydown = (e) => keys[e.key.toLowerCase()] = true;
+    window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+
+    balanceDisplay.innerText = localStorage.getItem('currentPlayerCash') || 5000;
+    loop();
+</script>
+</body>
+</html>

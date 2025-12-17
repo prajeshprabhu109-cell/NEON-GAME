@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: Pop-a-Shot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1e;
+            color: #00f0ff;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            margin: 0;
+            padding: 15px 0;
+            overflow: hidden;
+        }
+
+        #gameWrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 65vh; /* */
+            position: relative;
+        }
+
+        canvas {
+            background: #050510;
+            border: 3px solid #ff007f;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
+            height: 100%;
+            width: auto;
+            cursor: crosshair;
+        }
+
+        /* WIN MESSAGE STYLING */
+        #winMessage {
+            position: absolute;
+            top: 20%;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #39ff14;
+            text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14;
+            display: none;
+            pointer-events: none;
+            z-index: 10;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-action {
+            background-color: #ff007f;
+            color: white;
+            font-weight: bold;
+            padding: 10px 30px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 4px #b8005b;
+            border: none;
+        }
+
+        .back-link {
+            color: #555;
+            font-size: 13px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .back-link:hover { color: #00f0ff; }
+    </style>
+</head>
+<body>
+
+    <div class="text-center">
+        <h1 class="text-2xl font-bold text-cyan-400">NEON POP-A-SHOT</h1>
+        <div class="text-green-400 font-bold">CASH: $<span id="balanceDisplay">0</span></div>
+    </div>
+
+    <div id="gameWrapper">
+        <canvas id="baskCanvas" width="400" height="600"></canvas>
+        <div id="winMessage">JACKPOT!</div>
+    </div>
+
+    <div class="controls-container">
+        <button class="btn-action" onclick="forceNewBall()">NEW BALL ($100)</button>
+        <div class="text-[10px] font-bold text-gray-600">PULL BACK ON BALL TO AIM & SHOOT</div>
+        <a href="clubs.html" target="_top" class="back-link">← BACK TO CLUBS</a>
+    </div>
+
+<script>
+    const canvas = document.getElementById('baskCanvas');
+    const ctx = canvas.getContext('2d');
+    const balanceDisplay = document.getElementById('balanceDisplay');
+    const winMsg = document.getElementById('winMessage');
+
+    let ball = { x: 200, y: 530, vx: 0, vy: 0, r: 15, active: false, scored: false };
+    let hoop = { x: 200, y: 120, w: 60, dir: 1, speed: 2.5 };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let mousePos = { x: 200, y: 530 };
+
+    function updateCash(amt) {
+        let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 5000;
+        cash += amt;
+        localStorage.setItem('currentPlayerCash', cash);
+        balanceDisplay.innerText = cash;
+    }
+
+    function showWinMessage() {
+        winMsg.style.display = 'block';
+        setTimeout(() => {
+            winMsg.style.display = 'none';
+        }, 1500); // Message disappears after 1.5 seconds
+    }
+
+    function forceNewBall() {
+        let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 0;
+        if (cash < 100) return alert("Need $100!");
+
+        updateCash(-100);
+        ball = { x: 200, y: 530, vx: 0, vy: 0, r: 15, active: false, scored: false };
+        isDragging = false;
+    }
+
+    canvas.onmousedown = (e) => {
+        if (ball.active) return;
+        const rect = canvas.getBoundingClientRect();
+        dragStart = {
+            x: (e.clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+
+        let dist = Math.hypot(dragStart.x - ball.x, dragStart.y - ball.y);
+        if (dist < 30) isDragging = true;
+    };
+
+    window.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mousePos = {
+            x: (e.clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+    };
+
+    window.onmouseup = () => {
+        if (!isDragging) return;
+        let dx = dragStart.x - mousePos.x;
+        let dy = dragStart.y - mousePos.y;
+        if (Math.hypot(dx, dy) > 10) {
+            ball.vx = dx * 0.14;
+            ball.vy = dy * 0.14;
+            ball.active = true;
+        }
+        isDragging = false;
+    };
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        hoop.x += hoop.speed * hoop.dir;
+        if (hoop.x < 80 || hoop.x > 320) hoop.dir *= -1;
+
+        // Backboard
+        ctx.strokeStyle = "#ff007f";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(hoop.x - 45, hoop.y - 60, 90, 70);
+
+        // Rim
+        ctx.beginPath();
+        ctx.ellipse(hoop.x, hoop.y, hoop.w/2, 10, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = "#39ff14";
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#39ff14";
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Aim Line
+        if (isDragging && !ball.active) {
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(ball.x, ball.y);
+            ctx.lineTo(ball.x + (dragStart.x - mousePos.x), ball.y + (dragStart.y - mousePos.y));
+            ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        if (ball.active) {
+            ball.vy += 0.38;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            if (ball.x < ball.r || ball.x > canvas.width - ball.r) {
+                ball.vx *= -0.6;
+                ball.x = ball.x < ball.r ? ball.r : canvas.width - ball.r;
+            }
+
+            // Scored Basket
+            if (!ball.scored && ball.vy > 0 &&
+                Math.abs(ball.x - hoop.x) < hoop.w/2 &&
+                Math.abs(ball.y - hoop.y) < 20) {
+                updateCash(1000);
+                showWinMessage(); // Trigger the flashing message
+                ball.scored = true;
+            }
+
+            if (ball.y > canvas.height + 100) {
+                ball.active = false;
+                ball.scored = false;
+                ball.x = 200; ball.y = 530; ball.vx = 0; ball.vy = 0;
+            }
+        }
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#fff";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        requestAnimationFrame(loop);
+    }
+
+    balanceDisplay.innerText = localStorage.getItem('currentPlayerCash') || 5000;
+    loop();
+</script>
+</body>
+</html>

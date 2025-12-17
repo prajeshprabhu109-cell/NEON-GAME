@@ -52,12 +52,18 @@
             width: 100%;
             margin-right: 10px;
         }
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 
 <div class="modal-content">
-    <h1 class="text-2xl font-bold mb-4" id="overlay-title">Neon Multiplayer Lobby</h1>
+    <h1 class="text-2xl font-bold mb-4">Neon Multiplayer Lobby</h1>
     <p class="mb-4 text-sm" id="status-message" style="color: yellow;">Status: Connecting...</p>
 
     <div id="multiplayer-ui">
@@ -68,8 +74,8 @@
             </button>
         </div>
 
-        <div class="flex items-center space-x-2 mb-6">
-            <input type="text" id="joinCodeInput" placeholder="Enter session code" maxlength="6" />
+        <div class="input-group">
+            <input type="text" id="joinCodeInput" placeholder="Enter session code" maxlength="6" style="flex-grow: 1;" />
             <button class="btn-secondary" onclick="window.joinSession(document.getElementById('joinCodeInput').value)">Join</button>
         </div>
 
@@ -86,13 +92,14 @@
 
 <script type="module">
     // --- IMPORT FUNCTIONS FROM EXTERNAL LOGIC FILE ---
-    import { setupFirebase, createSession, joinSession } from './multiplayer-logic.js';
+    import { setupFirebase, createSession, joinSession, leaveSession } from './multiplayer-logic.js';
 
     // 1. Expose Imported Functions to the Window object so the HTML buttons can call them
     window.createSession = createSession;
     window.joinSession = joinSession;
+    window.leaveSession = leaveSession;
 
-    // 2. Simple utility to display messages in this lobby
+    // 2. Simple utility to display messages in this lobby (replicates the showOverlay functionality)
     window.alert = (msg) => {
         document.getElementById('session-display').textContent = msg;
         document.getElementById('session-display').style.color = '#ff007f';
@@ -104,6 +111,9 @@
         document.getElementById('status-message').textContent = 'Status: Ready.';
         document.getElementById('status-message').style.color = '#00f0ff';
     });
+
+    // Handle button clicks directly since the functions are now on the window object
+    document.getElementById('return-link').onclick = window.leaveSession;
 
 </script>
 

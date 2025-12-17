@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Hustle: Casino - Roulette</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #00f0ff;
+        }
+        .betting-panel {
+            background-color: rgba(13, 13, 30, 0.95);
+            border: 3px solid #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
+            width: 95%;
+            max-width: 800px;
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+        .btn-action {
+            background-color: #ff007f;
+            color: #0d0d1e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #b8005b;
+        }
+        .btn-secondary {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #00aaff;
+        }
+        .btn-bet {
+            padding: 10px 15px;
+            border-radius: 0.5rem;
+            margin: 5px;
+            font-size: 0.9rem;
+            background-color: #2a2a4a;
+            color: #00f0ff;
+            border: 1px solid #00f0ff;
+            transition: all 0.1s;
+        }
+        .btn-bet.selected {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            box-shadow: 0 0 10px #00f0ff;
+            border-color: #00ff7f;
+        }
+
+        #wheelContainer {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            height: 250px;
+            overflow: hidden;
+        }
+
+        #rouletteVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            border: 5px solid #0d0d1e;
+            display: none;
+        }
+
+        #rouletteWheelStatic {
+            width: 100%;
+            height: 100%;
+            background-image: url('roulette-wheel-image.jpeg');
+            background-size: cover;
+            background-position: center;
+            border-radius: 50%;
+            border: 5px solid #0d0d1e;
+            display: block;
+        }
+
+        #wheelMarker {
+            position: absolute;
+            z-index: 10;
+            width: 30px;
+            height: 15px;
+            background-color: #00f0ff;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            top: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body onclick="startMusic()"> <video id="bgMusic" loop playsinline style="display:none;">
+    <source src="music4 (1).mp4" type="video/mp4">
+</video>
+
+<div class="betting-panel">
+    <div class="flex justify-between items-center mb-4 border-b border-white pb-2">
+        <h1 class="text-2xl font-bold">ROULETTE TABLE</h1>
+        <div class="text-lg">CASH: <span id="currentCash">$5000</span></div>
+    </div>
+
+    <div id="wheelContainer">
+        <div id="rouletteWheelStatic"></div>
+        <video id="rouletteVideo" muted playsinline>
+            <source src="roulette (1).mp4" type="video/mp4">
+        </video>
+        <div id="wheelMarker"></div>
+    </div>
+
+    <div id="rouletteUI">
+        <h2 class="text-xl font-bold mb-3 text-white">Your Bet: <span id="selectedBetDisplay" class="text-green-400">PICK A BET</span></h2>
+
+        <div id="betOptions" class="flex flex-wrap justify-center mb-4">
+            <button class="btn-bet bg-red-600 text-white" data-bet="red" onclick="selectBet('red')">RED (2x)</button>
+            <button class="btn-bet bg-black text-white" data-bet="black" onclick="selectBet('black')">BLACK (2x)</button>
+            <button class="btn-bet" data-bet="even" onclick="selectBet('even')">EVEN (2x)</button>
+            <button class="btn-bet" data-bet="odd" onclick="selectBet('odd')">ODD (2x)</button>
+            <button class="btn-bet" data-bet="1-18" onclick="selectBet('1-18')">1-18 (2x)</button>
+            <button class="btn-bet" data-bet="19-36" onclick="selectBet('19-36')">19-36 (2x)</button>
+            <button class="btn-bet bg-green-600 text-white" data-bet="0" onclick="selectBet('0')">0 (36x)</button>
+            <button class="btn-bet bg-gray-700" data-bet="11" onclick="selectBet('11')">11 (36x)</button>
+        </div>
+
+        <div class="text-lg mb-4">Amount: <span id="betAmountDisplay">$0</span></div>
+
+        <div id="betAmountButtons" class="flex flex-wrap justify-center">
+            <button class="btn-bet" data-amount="100" onclick="handleBetAmount(100)">$100</button>
+            <button class="btn-bet" data-amount="500" onclick="handleBetAmount(500)">$500</button>
+            <button class="btn-bet" data-amount="1000" onclick="handleBetAmount(1000)">$1000</button>
+            <button class="btn-bet" data-amount="5000" onclick="handleBetAmount(5000)">$5000</button>
+            <button class="btn-bet" data-amount="0" style="background-color: #ff007f;" onclick="handleBetAmount(0)">CLEAR</button>
+        </div>
+
+        <button id="spinButton" class="btn-action w-full mt-4" onclick="startSpin()">
+            SPIN WHEEL
+        </button>
+    </div>
+
+    <div id="resultDisplay" class="text-center mt-4"></div>
+
+    <a href="clubs.html" class="btn-secondary w-full block mt-4 text-center">EXIT CLUBS</a>
+</div>
+
+<script type="module">
+    import { loadPlayerState, savePlayerCash } from './betting-logic.js';
+    import { calculatePayout } from './casino-logic.js';
+
+    let playerCash = 5000;
+    let betAmount = 0;
+    let selectedBet = null;
+    let gameInProgress = false;
+    let musicPlayed = false;
+
+    const rouletteVideo = document.getElementById('rouletteVideo');
+    const rouletteWheelStatic = document.getElementById('rouletteWheelStatic');
+    const bgMusic = document.getElementById('bgMusic');
+
+    const FORCED_WINNER = { number: 11, color: 'black', parity: 'odd' };
+    const FALLBACK_DURATION_MS = 4000;
+
+    async function initializeCasino() {
+        playerCash = await loadPlayerState();
+        updateDisplay();
+        rouletteVideo.load();
+        bgMusic.volume = 0.5; // Set music to 50% volume
+    }
+
+    // Function to handle browser music unlock
+    window.startMusic = function() {
+        if (!musicPlayed) {
+            bgMusic.play().then(() => {
+                musicPlayed = true;
+            }).catch(e => console.log("Music waiting for interaction..."));
+        }
+    }
+
+    function updateDisplay() {
+        document.getElementById('currentCash').textContent = `$${playerCash}`;
+        document.getElementById('betAmountDisplay').textContent = `$${betAmount}`;
+        const spinButton = document.getElementById('spinButton');
+        const canSpin = selectedBet && betAmount > 0 && betAmount <= playerCash && !gameInProgress;
+        spinButton.disabled = !canSpin;
+        spinButton.textContent = gameInProgress ? "SPINNING..." : "SPIN WHEEL";
+        document.getElementById('selectedBetDisplay').textContent = selectedBet ? selectedBet.toUpperCase() : 'PICK A BET';
+        document.querySelectorAll('#betOptions button').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.bet === selectedBet);
+        });
+    }
+
+    window.selectBet = function(betType) {
+        startMusic(); // Also trigger on bet selection
+        selectedBet = betType;
+        updateDisplay();
+    }
+
+    window.handleBetAmount = function(amount) {
+        startMusic(); // Also trigger on amount selection
+        if (amount === 0) {
+            betAmount = 0;
+        } else if (betAmount + amount <= playerCash) {
+            betAmount += amount;
+        } else {
+            betAmount = playerCash;
+        }
+        updateDisplay();
+    }
+
+    window.startSpin = async function() {
+        if (!selectedBet || betAmount <= 0 || betAmount > playerCash || gameInProgress) return;
+
+        startMusic(); // Ensure music plays on spin
+
+        gameInProgress = true;
+        const resultDisplay = document.getElementById('resultDisplay');
+        playerCash -= betAmount;
+        await savePlayerCash(playerCash);
+        updateDisplay();
+
+        resultDisplay.innerHTML = `<span style="color:#00f0ff;">Betting $${betAmount} on ${selectedBet.toUpperCase()}...</span>`;
+
+        const videoDurationMs = rouletteVideo.duration > 0 ? rouletteVideo.duration * 1000 : FALLBACK_DURATION_MS;
+        rouletteWheelStatic.style.display = 'none';
+        rouletteVideo.style.display = 'block';
+        rouletteVideo.currentTime = 0;
+
+        await rouletteVideo.play().catch(error => console.error("Video playback failed:", error));
+
+        await new Promise(resolve => setTimeout(resolve, videoDurationMs));
+
+        const result = FORCED_WINNER;
+        const winnings = calculatePayout(selectedBet, betAmount, result);
+        let resultMessage = '';
+
+        if (winnings > 0) {
+            playerCash += betAmount + winnings;
+            resultMessage = `<span style="color:#00f0ff; font-size: 1.5rem;">WINNER! The ball settled on ${result.number} (${result.color.toUpperCase()}). You won $${winnings}.</span>`;
+        } else {
+            resultMessage = `<span style="color:#ff3333; font-size: 1.5rem;">LOST. The ball settled on ${result.number} (${result.color.toUpperCase()}). You lost $${betAmount}.</span>`;
+        }
+
+        await savePlayerCash(playerCash);
+        resultDisplay.innerHTML = resultMessage;
+        rouletteVideo.pause();
+        rouletteVideo.style.display = 'none';
+        rouletteWheelStatic.style.display = 'block';
+        betAmount = 0;
+        selectedBet = null;
+        gameInProgress = false;
+        updateDisplay();
+    }
+
+    window.onload = initializeCasino;
+</script>
+</body>
+</html>

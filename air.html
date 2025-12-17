@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Hustle: Pro Air Hockey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1e;
+            color: #00f0ff;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #hockeyTableContainer {
+            position: relative;
+            padding: 15px;
+            background: #1a1a2e;
+            border: 10px solid #333;
+            border-radius: 40px; /* Rounded arcade design */
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
+        }
+
+        canvas {
+            background-color: #050510;
+            /* Table surface texture */
+            background-image: radial-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border: 4px solid #00f0ff;
+            border-radius: 35px;
+            cursor: none;
+            box-shadow: inset 0 0 30px rgba(0, 240, 255, 0.2);
+        }
+
+        .hud {
+            width: 800px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .btn-action {
+            background-color: #ff007f;
+            color: #0d0d1e;
+            font-weight: bold;
+            padding: 10px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px #b8005b;
+            text-transform: uppercase;
+            transition: all 0.1s;
+        }
+        .btn-action:active { transform: translateY(2px); }
+
+        /* Mute button styling */
+        #muteToggle {
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #666;
+            transition: color 0.2s;
+        }
+        #muteToggle:hover { color: #00f0ff; }
+    </style>
+</head>
+<body onclick="startMusic()">
+
+    <video id="bgMusic" loop playsinline style="display:none;">
+        <source src="music3 (1).mp4" type="video/mp4">
+    </video>
+
+    <div class="hud">
+        <div>
+            <h1 class="text-3xl font-bold text-cyan-400" style="text-shadow: 0 0 10px #00f0ff;">NEON HOCKEY PRO</h1>
+            <div class="flex items-center gap-4">
+                <span class="text-xs text-yellow-400">WIN $500 | ENTRY: $100</span>
+                <span id="muteToggle" onclick="toggleMute()">🔈 MUTE MUSIC</span>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="text-2xl text-green-400 font-bold">CASH: $<span id="balanceDisplay">0</span></div>
+            <div id="msg" class="text-pink-500 font-bold h-4"></div>
+        </div>
+    </div>
+
+    <div id="hockeyTableContainer">
+        <canvas id="hockeyCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <div class="mt-6 flex gap-8 items-center">
+        <button class="btn-action" onclick="startGame()">START MATCH ($100)</button>
+        <a href="clubs.html" class="text-gray-500 hover:text-cyan-400 font-bold text-sm">← BACK TO CLUBS</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('hockeyCanvas');
+        const ctx = canvas.getContext('2d');
+        const balanceDisplay = document.getElementById('balanceDisplay');
+        const music = document.getElementById('bgMusic');
+        const muteToggle = document.getElementById('muteToggle');
+
+        const PUCK_RADIUS = 15;
+        const PADDLE_RADIUS = 30;
+        const FRICTION = 0.995;
+
+        let player = { x: 700, y: 200, score: 0 };
+        let ai = { x: 100, y: 200, score: 0 };
+        let puck = { x: 400, y: 200, vx: 0, vy: 0 };
+        let gameActive = false;
+        let musicStarted = false;
+        let isMuted = false;
+
+        function startMusic() {
+            if (!musicStarted) {
+                music.volume = 0.4;
+                music.play().catch(() => {});
+                musicStarted = true;
+            }
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            music.muted = isMuted;
+            muteToggle.innerText = isMuted ? "🔊 UNMUTE MUSIC" : "🔈 MUTE MUSIC";
+            muteToggle.style.color = isMuted ? "#ff007f" : "#666";
+        }
+
+        function startGame() {
+            let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 5000;
+            if (cash < 100) return alert("Need $100!");
+
+            localStorage.setItem('currentPlayerCash', cash - 100);
+            updateUI();
+            resetPuck();
+            player.score = 0;
+            ai.score = 0;
+            gameActive = true;
+            document.getElementById('msg').innerText = "GO!";
+        }
+
+        function resetPuck() {
+            puck.x = canvas.width / 2;
+            puck.y = canvas.height / 2;
+            puck.vx = (Math.random() > 0.5 ? 5 : -5);
+            puck.vy = (Math.random() - 0.5) * 6;
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            let targetX = e.clientX - rect.left;
+            let targetY = e.clientY - rect.top;
+
+            if (targetX < canvas.width / 2 + PADDLE_RADIUS) targetX = canvas.width / 2 + PADDLE_RADIUS;
+            if (targetX > canvas.width - PADDLE_RADIUS) targetX = canvas.width - PADDLE_RADIUS;
+            if (targetY < PADDLE_RADIUS) targetY = PADDLE_RADIUS;
+            if (targetY > canvas.height - PADDLE_RADIUS) targetY = canvas.height - PADDLE_RADIUS;
+
+            player.x = targetX;
+            player.y = targetY;
+        });
+
+        function handleCollision(p, paddle) {
+            let dx = p.x - paddle.x;
+            let dy = p.y - paddle.y;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < PUCK_RADIUS + PADDLE_RADIUS) {
+                let angle = Math.atan2(dy, dx);
+                let speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy) + 3;
+                p.vx = Math.cos(angle) * speed;
+                p.vy = Math.sin(angle) * speed;
+
+                p.x = paddle.x + (PUCK_RADIUS + PADDLE_RADIUS) * Math.cos(angle);
+                p.y = paddle.y + (PUCK_RADIUS + PADDLE_RADIUS) * Math.sin(angle);
+            }
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            puck.x += puck.vx;
+            puck.y += puck.vy;
+            puck.vx *= FRICTION;
+            puck.vy *= FRICTION;
+
+            if (puck.y - PUCK_RADIUS < 0 || puck.y + PUCK_RADIUS > canvas.height) puck.vy *= -1;
+
+            let aiEase = 0.12;
+            if (puck.x < canvas.width / 2) {
+                ai.y += (puck.y - ai.y) * aiEase;
+                if (ai.x < puck.x - 20) ai.x += 3;
+                else if (ai.x > 100) ai.x -= 2;
+            } else {
+                ai.y += (canvas.height/2 - ai.y) * 0.05;
+                if (ai.x > 100) ai.x -= 2;
+            }
+
+            handleCollision(puck, player);
+            handleCollision(puck, ai);
+
+            if (puck.x < 0) { player.score++; resetPuck(); }
+            if (puck.x > canvas.width) { ai.score++; resetPuck(); }
+
+            if (player.score >= 5) {
+                gameActive = false;
+                let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 0;
+                localStorage.setItem('currentPlayerCash', cash + 500);
+                document.getElementById('msg').innerText = "WINNER! +$500";
+                updateUI();
+            } else if (ai.score >= 5) {
+                gameActive = false;
+                document.getElementById('msg').innerText = "AI WON";
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Glowing Goal Arcs
+            ctx.lineWidth = 5;
+            ctx.shadowBlur = 20;
+            // AI Goal (Cyan)
+            ctx.strokeStyle = "#00f0ff"; ctx.shadowColor = "#00f0ff";
+            ctx.beginPath(); ctx.arc(0, 200, 100, -Math.PI/2, Math.PI/2); ctx.stroke();
+            // Player Goal (Pink)
+            ctx.strokeStyle = "#ff007f"; ctx.shadowColor = "#ff007f";
+            ctx.beginPath(); ctx.arc(800, 200, 100, Math.PI/2, -Math.PI/2); ctx.stroke();
+
+            // 2. Table Markings
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "rgba(0, 240, 255, 0.2)";
+            ctx.beginPath(); ctx.moveTo(400, 0); ctx.lineTo(400, 400); ctx.stroke();
+            ctx.beginPath(); ctx.arc(400, 200, 60, 0, Math.PI*2); ctx.stroke();
+
+            // 3. Game Objects with Neon Glow
+            ctx.shadowBlur = 15;
+            // Puck (White Glow)
+            ctx.fillStyle = "#fff"; ctx.shadowColor = "#fff";
+            ctx.beginPath(); ctx.arc(puck.x, puck.y, PUCK_RADIUS, 0, Math.PI*2); ctx.fill();
+            // AI Paddle (Cyan Glow)
+            ctx.fillStyle = "#00f0ff"; ctx.shadowColor = "#00f0ff";
+            ctx.beginPath(); ctx.arc(ai.x, ai.y, PADDLE_RADIUS, 0, Math.PI*2); ctx.fill();
+            // Player Paddle (Pink Glow)
+            ctx.fillStyle = "#ff007f"; ctx.shadowColor = "#ff007f";
+            ctx.beginPath(); ctx.arc(player.x, player.y, PADDLE_RADIUS, 0, Math.PI*2); ctx.fill();
+
+            // 4. Stylish Transparent Scoreboard
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(0, 240, 255, 0.2)";
+            ctx.font = "bold 80px Roboto Mono";
+            ctx.textAlign = "center";
+            ctx.fillText(ai.score, 340, 230);
+            ctx.fillText(player.score, 460, 230);
+        }
+
+        function updateUI() { balanceDisplay.innerText = localStorage.getItem('currentPlayerCash') || 5000; }
+        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+
+        window.onload = () => { updateUI(); gameLoop(); };
+    </script>
+</body>
+</html>

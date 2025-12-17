@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: City Grid - INTRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #00f0ff;
+        }
+
+        /* Styles for the main video frame */
+        #videoWrapper {
+            position: relative;
+            width: 800px;
+            height: 450px;
+            border: 4px solid #00f0ff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.7);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Muted Cinematic Video */
+        #introVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            /* CRITICAL: Video is muted */
+        }
+
+        /* Hidden Music Video (Audio Only) */
+        #musicVideo {
+            display: none;
+        }
+
+        /* Overlay to force user interaction and ensure playback */
+        #playOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(26, 26, 46, 0.9);
+            cursor: pointer;
+            text-align: center;
+            z-index: 50;
+        }
+        #playButton {
+            background-color: #ff007f;
+            color: #0d0d1e;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px #b8005b;
+            cursor: pointer;
+        }
+
+        #skipButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: rgba(255, 0, 127, 0.8);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        /* Mobile scaling fix */
+        @media (max-width: 850px) {
+            #videoWrapper {
+                width: 90vw;
+                height: calc(90vw * 9 / 16);
+                max-width: 800px;
+                max-height: 450px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="videoWrapper">
+        <video id="introVideo" muted playsinline>
+            <source src="best3 (1).mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <div id="playOverlay">
+            <p class="mt-4 text-sm text-gray-400">(Click anywhere to begin or press ESC/Space to skip)</p>
+        </div>
+
+        <button id="skipButton">NEXT</button>
+    </div>
+
+    <video id="musicVideo" loop playsinline>
+        <source src="music (1).mp4" type="video/mp4">
+        Your browser does not support the audio/video tag.
+    </video>
+
+    <script>
+        const introVideo = document.getElementById('introVideo');
+        const musicVideo = document.getElementById('musicVideo');
+        const playOverlay = document.getElementById('playOverlay');
+        const skipButton = document.getElementById('skipButton');
+        const GAME_URL = 'start2-video.html';
+
+        function startGameOver() {
+            introVideo.pause();
+            musicVideo.pause();
+            window.location.href = GAME_URL;
+        }
+
+        function startVideoAndMusic() {
+            // Hide the overlay
+            playOverlay.style.display = 'none';
+
+            // Start cinematic video (guaranteed to play since it's muted in HTML)
+            introVideo.play().catch(error => {
+                console.error("Intro video play attempt failed:", error);
+            });
+
+            // Start music (this requires the user interaction event to bypass restrictions)
+            musicVideo.play().catch(error => {
+                console.warn("Music playback failed (Browser restriction):", error);
+                // If music still fails, the game continues visually.
+            });
+        }
+
+        // --- Event Listeners ---
+
+        // 1. Cinematic ends -> Start game
+        introVideo.addEventListener('ended', startGameOver);
+
+        // 2. Click the overlay -> Start video and music
+        playOverlay.addEventListener('click', startVideoAndMusic);
+
+        // 3. Skip button -> Start game
+        skipButton.addEventListener('click', startGameOver);
+
+        // 4. Keyboard Listener -> Start game
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Escape') {
+                e.preventDefault();
+                startGameOver();
+            }
+        });
+
+        // Preload videos
+        introVideo.load();
+        musicVideo.load();
+    </script>
+</body>
+</html>

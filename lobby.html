@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Race Lobby</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Roboto Mono', monospace;
+            color: #00f0ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .lobby-panel {
+            background-color: rgba(13, 13, 30, 0.95);
+            border: 3px solid #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 400px;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .btn-create {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            box-shadow: 0 4px #00aaff;
+        }
+        .btn-join {
+            background-color: #ff007f;
+            color: #1a1a2e;
+            box-shadow: 0 4px #b8005b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="lobby-panel">
+    <h1 class="text-3xl font-bold mb-4 text-center">JOIN RACE LOBBY</h1>
+
+    <div id="status-message" class="mb-4 text-center text-lg text-yellow-400">Status: Initializing Firebase...</div>
+
+    <div id="session-display" class="mb-6 text-center text-xl font-mono p-2 border border-dashed border-gray-500 bg-gray-900 rounded">
+        Waiting for session...
+    </div>
+
+    <h2 class="text-xl font-bold mb-3 text-white">1. Create a Session</h2>
+    <button id="createButton" class="btn btn-create w-full mb-6" onclick="createSession()">
+        CREATE NEW SESSION
+    </button>
+
+    <h2 class="text-xl font-bold mb-3 text-white">2. Join Existing Session</h2>
+    <div class="flex mb-4">
+        <input type="text" id="codeInput" placeholder="ENTER 6-DIGIT CODE" maxlength="6"
+               class="flex-grow p-3 rounded-l-md border-none bg-gray-700 text-white placeholder-gray-400 uppercase text-center focus:ring-2 focus:ring-[#00f0ff]">
+        <button id="joinButton" class="btn btn-join rounded-l-none" onclick="joinSession(document.getElementById('codeInput').value)">
+            JOIN
+        </button>
+    </div>
+
+    <button id="leaveButton" class="btn bg-gray-600 text-white w-full mb-4" onclick="leaveSession()">
+        LEAVE CURRENT SESSION
+    </button>
+
+    <a href="horse-bet.html" class="btn bg-[#00f0ff] text-[#1a1a2e] w-full block text-center mt-4">GO TO BETTING HUB</a>
+</div>
+
+<script type="module">
+    // IMPORTANT: Import functions from your existing multiplayer-logic.js
+    import { setupFirebase, createSession, joinSession, leaveSession } from './multiplayer-logic.js';
+
+    // Expose functions globally so they can be called directly from HTML's 'onclick' attributes
+    window.createSession = createSession;
+    window.joinSession = joinSession;
+    window.leaveSession = leaveSession;
+
+    // 1. Initialize Firebase when the page loads
+    window.onload = () => {
+        // You can optionally pass a function to setupFirebase that runs when auth is ready
+        setupFirebase(() => {
+            document.getElementById('status-message').textContent = 'Status: Ready to connect.';
+        });
+    };
+
+    // 2. Automatically capitalize the code input for easier use
+    document.getElementById('codeInput').addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
+    });
+</script>
+
+</body>
+</html>

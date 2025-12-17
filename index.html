@@ -271,7 +271,10 @@
         </div>
 
         <div class="multiplayer-controls">
-            <a href="multiplayer.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">PLAY WITH FRIENDS</a>            <span id="currentSessionCode" class="session-code hidden" title="Active session code"></span>
+            <a href="clubs.html" id="btnClubs" class="btn-action" style="text-decoration: none; padding: 10px 10px; display: inline-block; font-size: 0.8rem;">CLUBS</a>
+            <a href="multiplayer.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">PLAY WITH FRIENDS</a>
+               <span id="currentSessionCode" class="session-code hidden" title="Active session code"></span>
+            <a href="mobile.html" id="btnMobileView" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">MOBILE VIEW</a>
         </div>
     </div>
 
@@ -307,6 +310,7 @@
 </div>
 
 <script type="module">
+
     // --- FIREBASE SETUP (Mandatory for real-world persistence) ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -1979,6 +1983,28 @@
             opponentState = null;
         }
     }, 1000);
+
+    // --- CRITICAL: PATCH TO RECEIVE MOBILE CONTROL INPUTS ---
+
+window.addEventListener('message', (event) => {
+    // This checks if the message is a keydown/keyup event type
+    if (event.data && (event.data.type === 'keydown' || event.data.type === 'keyup')) {
+        const key = event.data.key.toLowerCase();
+
+        if (event.data.type === 'keydown') {
+            // Simulate key press in the main game's 'keys' object
+            keys[key] = true;
+
+            // Replicate the logic you have for resetting heat decay
+            if (player.heat > 0) {
+                player.lastHeatGainTime = performance.now();
+            }
+        } else if (event.data.type === 'keyup') {
+            // Simulate key release
+            keys[key] = false;
+        }
+    }
+});
 
 </script>
 

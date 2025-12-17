@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Hustle: Skee-Ball Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d0d1e;
+            color: #00f0ff;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #gameWrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            height: 70vh; /* Fits screen height perfectly */
+        }
+
+        canvas {
+            background: #050510;
+            border: 3px solid #ff007f;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.3);
+            height: 100%;
+            width: auto;
+            cursor: crosshair;
+        }
+
+        #powerMeter {
+            width: 20px;
+            height: 100%;
+            background: #111;
+            border: 2px solid #333;
+            display: flex;
+            flex-direction: column-reverse;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .power-segment { width: 100%; height: 25%; opacity: 0.1; transition: opacity 0.1s; }
+        .p-red { background: #ff0000; }
+        .p-orange { background: #ffa500; }
+        .p-yellow { background: #ffff00; }
+        .p-green { background: #00ff00; }
+
+        .btn-action {
+            background-color: #ff007f;
+            color: white;
+            font-weight: bold;
+            padding: 10px 30px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 4px #b8005b;
+            border: none;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="text-center mb-2">
+        <h1 class="text-2xl font-bold text-cyan-400">NEON SKEE-BALL</h1>
+        <div class="text-green-400 font-bold">CASH: $<span id="balanceDisplay">0</span></div>
+    </div>
+
+    <div id="gameWrapper">
+        <div id="powerMeter">
+            <div id="seg-red" class="power-segment p-red"></div>
+            <div id="seg-orange" class="power-segment p-orange"></div>
+            <div id="seg-yellow" class="power-segment p-yellow"></div>
+            <div id="seg-green" class="power-segment p-green"></div>
+        </div>
+        <canvas id="skeeCanvas" width="400" height="600"></canvas>
+    </div>
+
+    <button class="btn-action" onclick="resetBall()">RESET BALL</button>
+    <div class="mt-4">
+        <a href="clubs.html" target="_top" class="text-gray-500 hover:text-cyan-400 text-xs font-bold">← BACK TO CLUBS</a>
+    </div>
+
+<script>
+    const canvas = document.getElementById('skeeCanvas');
+    const ctx = canvas.getContext('2d');
+    const balanceDisplay = document.getElementById('balanceDisplay');
+
+    let ball = { x: 200, y: 550, vx: 0, vy: 0, radius: 12, active: false, scored: false };
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let mousePos = { x: 200, y: 550 };
+    let power = 0;
+
+    const targets = [
+        { x: 200, y: 100, r: 28, val: 1000, color: '#ff007f' },
+        { x: 200, y: 220, r: 38, val: 500, color: '#00f0ff' },
+        { x: 200, y: 350, r: 48, val: 100, color: '#39ff14' }
+    ];
+
+    function updateCash(amt) {
+        let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 5000;
+        cash += amt;
+        localStorage.setItem('currentPlayerCash', cash);
+        balanceDisplay.innerText = cash;
+    }
+
+    function updatePowerUI(p) {
+        const segs = ['seg-green', 'seg-yellow', 'seg-orange', 'seg-red'];
+        segs.forEach(id => document.getElementById(id).style.opacity = "0.1");
+        if (p > 0.1) document.getElementById('seg-green').style.opacity = "1";
+        if (p > 0.4) document.getElementById('seg-yellow').style.opacity = "1";
+        if (p > 0.7) document.getElementById('seg-orange').style.opacity = "1";
+        if (p > 0.9) document.getElementById('seg-red').style.opacity = "1";
+    }
+
+    canvas.onmousedown = (e) => {
+        if (ball.active) return;
+        const rect = canvas.getBoundingClientRect();
+        isDragging = true;
+        dragStart = {
+            x: (e.clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+    };
+
+    window.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mousePos = {
+            x: (e.clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.clientY - rect.top) * (canvas.height / rect.height)
+        };
+
+        if (isDragging) {
+            let dy = Math.max(0, mousePos.y - dragStart.y);
+            power = Math.min(dy / 150, 1);
+            updatePowerUI(power);
+        }
+    };
+
+    window.onmouseup = () => {
+        if (!isDragging) return;
+        let currentCash = parseInt(localStorage.getItem('currentPlayerCash')) || 0;
+
+        if (power > 0.15 && currentCash >= 100) {
+            updateCash(-100);
+            // Inverted aim: pull left to aim right
+            ball.vx = (dragStart.x - mousePos.x) * 0.18;
+            ball.vy = -power * 25; // Power tuned to reach 1000
+            ball.active = true;
+        }
+        isDragging = false;
+        updatePowerUI(0);
+    };
+
+    function resetBall() {
+        if (!ball.active) {
+            ball = { x: 200, y: 550, vx: 0, vy: 0, radius: 12, active: false, scored: false };
+        }
+    }
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw targets
+        targets.forEach(t => {
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+            ctx.strokeStyle = t.color;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 14px Roboto Mono";
+            ctx.textAlign = "center";
+            ctx.fillText(t.val, t.x, t.y + 5);
+        });
+
+        // DRAW AIM LINE ONLY (No Stick)
+        if (isDragging && !ball.active) {
+            let dx = dragStart.x - mousePos.x;
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(ball.x, ball.y);
+            // Line points toward targets based on pull-back
+            ctx.lineTo(ball.x + (dx * 5), ball.y - (power * 400));
+            ctx.strokeStyle = "rgba(0, 240, 255, 0.4)";
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        if (ball.active) {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vy += 0.42; // Gravity
+
+            // Wall bouncing
+            if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) {
+                ball.vx *= -0.6;
+                ball.x = ball.x < ball.radius ? ball.radius : canvas.width - ball.radius;
+            }
+
+            targets.forEach(t => {
+                let dist = Math.hypot(ball.x - t.x, ball.y - t.y);
+                if (dist < t.r && !ball.scored) {
+                    updateCash(t.val);
+                    ball.scored = true;
+                    ball.active = false;
+                    setTimeout(resetBall, 1200);
+                }
+            });
+
+            if (ball.y > canvas.height + 50) {
+                ball.active = false;
+                setTimeout(resetBall, 500);
+            }
+        }
+
+        // Draw White Ball
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#fff";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        requestAnimationFrame(loop);
+    }
+
+    balanceDisplay.innerText = localStorage.getItem('currentPlayerCash') || 5000;
+    loop();
+</script>
+</body>
+</html>

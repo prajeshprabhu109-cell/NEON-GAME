@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Hustle: Live Horse Race</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #00f0ff;
+        }
+        .race-viewer {
+            background-color: rgba(13, 13, 30, 0.95);
+            border: 3px solid #00f0ff;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.7);
+            width: 95%;
+            max-width: 800px;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            text-align: center;
+        }
+        #videoContainer {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 1.5rem;
+            border: 2px solid #ff007f;
+            overflow: hidden;
+            background: black;
+            /* Flex properties ensure the video fills the container */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* New Style for the video element itself */
+        #raceVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .btn-secondary {
+            background-color: #ff007f;
+            color: #1a1a2e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #b8005b;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="race-viewer">
+    <h1 class="text-3xl font-bold mb-4">LIVE RACE FEED</h1>
+    <p class="text-sm text-gray-400 mb-4">A new race starts every minute! Head to the Betting Hub to place a wager.</p>
+
+    <div id="videoContainer">
+        <video id="raceVideo" playsinline>
+            <source src="race (1).mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+    <div id="statusDisplay" class="text-xl font-bold text-white mb-4">
+        Click 'Start Race' to view the simulation.
+    </div>
+
+    <button id="startRaceButton" class="btn-secondary w-full block text-center" onclick="startRace()">START RACE</button>
+
+    <a href="race-bet.html" class="btn-secondary w-full block text-center mt-2">GO TO BETTING HUB</a>
+    <a href="clubs.html" class="btn-secondary w-full block text-center mt-2">EXIT CLUBS</a>
+</div>
+
+<script>
+    // --- Race Viewer Logic ---
+    const video = document.getElementById('raceVideo');
+    const statusDisplay = document.getElementById('statusDisplay');
+
+    // Listener for when the video ends
+    video.addEventListener('ended', function() {
+        statusDisplay.textContent = "RACE FINISHED! Click START RACE for a new simulation.";
+    });
+
+    // Function to start the race
+    function startRace() {
+        // Reset the video to the beginning
+        video.currentTime = 0;
+
+        // Use .play() to start the video
+        video.play().then(() => {
+            statusDisplay.textContent = "RACE IN PROGRESS! Good Luck!";
+        }).catch(error => {
+            // Handle cases where the browser blocks autoplay without user interaction (e.g., sound is present)
+            statusDisplay.textContent = "Playback blocked. Please click to start.";
+            console.error("Video playback blocked:", error);
+        });
+    }
+
+    // Expose the function globally for the HTML button
+    window.startRace = startRace;
+
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Hustle: Mobile View</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles matching your game aesthetics */
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Roboto Mono', monospace;
+
+            /* CRITICAL: Use Flexbox to manage vertical layout */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Essential for mobile apps */
+            touch-action: manipulation;
+        }
+
+        /* --- SPACE RESERVATION & FIXED AREAS --- */
+
+        /* Area for CANCEL VIEW button (Header) */
+        .header-fixed-area {
+            position: relative; /* Reserves space in the flex layout */
+            width: 100%;
+            height: 60px; /* Reserves 60px space */
+            z-index: 110;
+            display: flex;
+            align-items: center;
+            padding-left: 15px;
+        }
+
+        /* Area for Controls (Footer) */
+        .footer-fixed-area {
+            position: relative; /* Reserves space in the flex layout */
+            width: 100%;
+            height: 150px; /* Reserves 150px space for controls */
+            z-index: 110;
+        }
+
+        /* --- CRITICAL FIX: DYNAMIC IFRAME SCALING (The Perfect View) --- */
+        #canvasWrapper {
+            /* This height is the remaining space: 100% of viewport MINUS reserved header (60px) and footer (150px) */
+            height: calc(100vh - 210px);
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            display: flex; /* Use flex to center the iframe content */
+            justify-content: center;
+            align-items: center;
+        }
+
+        iframe {
+            /* Fixed game size */
+            width: 800px;
+            height: 450px;
+
+            /* Calculation: Scales the 800x450 content down to fit inside the dynamically sized canvasWrapper */
+            --scale-factor: min(
+                (100vw / 800), /* Maximize based on width */
+                (calc(100vh - 210px) / 450) /* Maximize based on available height */
+            );
+
+            transform: scale(var(--scale-factor));
+            transform-origin: center center; /* Scale from the center */
+
+            position: absolute; /* Allows centering within canvasWrapper */
+            border: 4px solid #00f0ff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+        }
+
+        /* --- CONTROL STYLES --- */
+        .mobile-controls {
+            /* The controls are absolutely positioned inside the fixed footer area */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 15px;
+            pointer-events: none;
+        }
+
+        .dpad-area, .throttle-brake-area {
+            pointer-events: auto;
+        }
+
+        .control-button {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            user-select: none;
+            touch-action: manipulation;
+            opacity: 0.8;
+            transition: opacity 0.1s;
+        }
+
+        .control-button:active {
+            opacity: 1.0;
+            background-color: rgba(0, 240, 255, 0.4);
+        }
+
+        #btn-left, #btn-right {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            font-size: 3rem;
+            line-height: 1;
+            text-shadow: 0 0 5px #00f0ff;
+        }
+
+        #btn-accel {
+            width: 80px;
+            height: 120px;
+            border-radius: 10px;
+            background-color: rgba(255, 0, 127, 0.8);
+            font-size: 2rem;
+        }
+
+        #btn-brake {
+            width: 80px;
+            height: 50px;
+            border-radius: 8px;
+            background-color: rgba(255, 0, 0, 0.6);
+            font-size: 1.5rem;
+        }
+
+        .btn-secondary {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #00aaff;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-fixed-area">
+    <a href="perfect.html"
+       class="btn-secondary"
+       style="
+           display: inline-flex;
+           align-items: center;
+           justify-content: center;
+           padding: 8px 12px;
+           text-decoration: none;
+           border-radius: 5px;
+           font-size: 1rem;
+           box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);"
+    >
+        ← CANCEL VIEW
+    </a>
+</div>
+
+<div id="canvasWrapper">
+    <iframe src="perfect.html" frameborder="0" width="800" height="450"></iframe>
+</div>
+
+<div class="footer-fixed-area">
+    <div class="mobile-controls">
+        <div class="dpad-area">
+            <div id="btn-left" data-key="a" class="control-button">←</div>
+            <div id="btn-right" data-key="d" class="control-button">→</div>
+        </div>
+
+        <div class="throttle-brake-area">
+            <div id="btn-accel" data-key="w" class="control-button">Accel</div>
+            <div id="btn-brake" data-key="s" class="control-button">Brake</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- MOBILE CONTROL INPUT HANDLING (SENDER) ---
+    // This script ensures the game inside the iframe receives touch/mouse commands.
+
+    window.addEventListener('load', () => {
+        const gameIframe = document.querySelector('iframe');
+        const controlButtons = document.querySelectorAll('.control-button');
+
+        const pressControl = (key) => {
+            gameIframe.contentWindow.postMessage({ type: 'keydown', key: key }, '*');
+        };
+
+        const releaseControl = (key) => {
+            gameIframe.contentWindow.postMessage({ type: 'keyup', key: key }, '*');
+        };
+
+        controlButtons.forEach(button => {
+            const key = button.dataset.key;
+
+            // --- TOUCH EVENTS ---
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                pressControl(key);
+            }, { passive: false });
+
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                releaseControl(key);
+            }, { passive: false });
+
+            // --- MOUSE EVENTS (for desktop testing) ---
+            button.addEventListener('mousedown', () => pressControl(key));
+            button.addEventListener('mouseup', () => releaseControl(key));
+            button.addEventListener('mouseleave', () => releaseControl(key));
+        });
+    });
+</script>
+</body>
+</html>

@@ -64,7 +64,7 @@
             box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
             color: #00f0ff;
             text-shadow: 0 0 5px #00f0ff;
-            max-width: 400px; /* Wider for shop content */
+            max-width: 450px; /* Increased max-width for betting menu */
             width: 11/12;
         }
 
@@ -239,12 +239,27 @@
                 display: none;
             }
         }
+
+        /* Multiplayer hint button */
+        .multiplayer-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .session-code {
+            font-weight: bold;
+            color: #ffffff;
+            background: rgba(0,0,0,0.25);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #00f0ff;
+        }
     </style>
 </head>
 <body>
 
 <div class="game-container w-full">
-    <!-- Game HUD -->
     <div id="hud" class="w-full max-w-lg mb-4 p-3 rounded-xl hud-panel flex justify-between text-sm sm:text-base">
         <div>
             <span class="text-white">STATUS: </span><span id="statusText" class="text-green-400">IDLE</span>
@@ -255,45 +270,43 @@
         <div>
             <span class="text-white">HEAT: </span><span id="heatText" class="text-yellow-400">0</span>
         </div>
-         <div>
+        <div>
             <span class="text-white">TIME: </span><span id="timeText" class="text-cyan-400">--</span>
         </div>
-    
-        <a href="multiplayer.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; display: inline-block;">PLAY WITH FRIENDS</a>            <span id="currentSessionCode" class="session-code hidden" title="Active session code"></span>
 
+
+        <div class="multiplayer-controls">
+            <a href="mobile.html" id="btnMobileView" class="btn-secondary" style="text-decoration: none; padding: 10px 10px; display: inline-block; font-size: 0.8rem;">MOBILE VIEW</a>
+            <a href="multiplayer.html" id="btnPlayWithFriends" class="btn-secondary" style="text-decoration: none; padding: 10px 10px; display: inline-block; font-size: 0.8rem;">PLAY WITH FRIENDS</a>
+            <a href="clubs.html" id="btnClubs" class="btn-action" style="text-decoration: none; padding: 10px 10px; display: inline-block; font-size: 0.8rem;">CLUBS</a>
+            <span id="currentSessionCode" class="session-code hidden" title="Active session code"></span>
+        </div>
     </div>
 
-    <!-- Canvas Wrapper (Holds the game screen and the centered overlay) -->
     <div id="canvasWrapper" class="relative max-w-full">
         <canvas id="gameCanvas" width="800" height="450" class="rounded-lg max-w-full"></canvas>
 
-        <!-- NEW: Centralized Game Overlay/Modal -->
         <div id="gameOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden">
             <div id="modalContent" class="p-6 rounded-xl text-center w-11/12 pointer-events-auto">
                 <div id="overlayMessage" class="text-lg font-bold mb-4 text-white"></div>
                 <div id="overlayActions" class="flex justify-center space-x-4">
-                    <!-- Buttons will be injected here -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
 
-    <!-- Permanent Control Hint (Keyboard) -->
     <div class="w-full max-w-lg mt-4 text-xs text-gray-400 text-center permanent-controls-hint">
         Controls: W/Up (Accelerate), S/Down (Brake/Reverse), A/Left (Steer Left), D/Right (Steer Right)
     </div>
 </div>
 
-<!-- MOBILE BUTTON CONTROLS (REVERTED and Simplified) -->
 <div class="mobile-controls-wrapper">
     <div class="mobile-controls">
-        <!-- Left Side: Steering only (Left/Right) -->
         <div class="dpad-area">
             <div id="btn-left" data-key="a" class="control-button">←</div>
             <div id="btn-right" data-key="d" class="control-button">→</div>
         </div>
 
-        <!-- Right Side: Separate Throttle/Brake -->
         <div class="throttle-brake-area">
             <div id="btn-accel" data-key="w" class="control-button">↑</div>
             <div id="btn-brake" data-key="s" class="control-button">↓</div>
@@ -302,22 +315,39 @@
 </div>
 
 <script type="module">
+
+    window.onload = function() {
+    // --- STARTING CASH LOGIC ---
+    // Check if the player has ever played before
+    if (localStorage.getItem('currentPlayerCash') === null) {
+        // If they are new, give them $5000 and save it to the "bank"
+        localStorage.setItem('currentPlayerCash', '5000');
+        console.log("New player detected. Initialized balance to $5000.");
+    }
+
+    // Now load that value into your game's player object
+    player.cash = parseInt(localStorage.getItem('currentPlayerCash'));
+    // ---------------------------
+
+    // ... (rest of your existing window.onload code)
+};
+
     // --- FIREBASE SETUP (Mandatory for real-world persistence) ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     // FIXED URL for getFirestore to 11.6.1 to match other versions
-    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Global variables provided by the environment
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    const initialAuthToken = null;
 
     let app, db, auth;
     let userId = null;
     let isAuthReady = false;
-    let hasFirebase = Object.keys(firebaseConfig).length > 0; // Check if config exists
+    let hasFirebase = Object.keys(firebaseConfig).length > 0;
 
     // Game state variables
     const canvas = document.getElementById('gameCanvas');
@@ -331,12 +361,21 @@
     let lastBribePromptTime = 0;
     const BRIBE_PROMPT_DELAY_MS = 30000;
 
+    // --- CLUBS PORTAL DEFINITION (RELOCATED TO TOP RIGHT SAFE ZONE) ---
+    const CLUBS_PORTAL = {
+        x: 650, // Top Right Safe Zone
+        y: 50,
+        width: 150,
+        height: 50,
+        color: '#8a2be2',
+        text: 'CLUBS'
+    };
+    const CLUBS_COLLISION_RADIUS = 80; // INCREASED TO 80px for reliable collision
+    // --- END PORTAL DEFINITION ---
+
     // NEW: Terrain Types
     const TERRAIN_TYPE = {
-        BLOCK: 0,   // Standard building/non-drivable block
-        ROAD: 1,    // Drivable road (should always be 1)
-        PARK: 2,    // Non-drivable, visual change (green)
-        WATER: 3    // Non-drivable, heavy penalty (blue)
+        BLOCK: 0, ROAD: 1, PARK: 2, WATER: 3
     };
 
     // NEW: Map Definition (COLS x ROWS grid) - Initialized later
@@ -364,8 +403,8 @@
         acceleration: 0.1,
         deceleration: 0.05,
         handling: 0.05,
-        color: CAR_COLORS[0].hex, // Re-integrated color property
-        colorIndex: 0, // Re-integrated color index
+        color: CAR_COLORS[0].hex,
+        colorIndex: 0,
         cash: 5000,
         heat: 0,
         speedLevel: 1,
@@ -400,10 +439,10 @@
         x: 0,
         y: 0,
         reward: 0,
-        duration: 30, // 30 seconds to reach the drop
+        duration: 30,
         startTime: 0,
         timeLeft: 0,
-        color: '#ffd700' // Gold/Yellow
+        color: '#ffd700'
     };
 
     const keys = {};
@@ -412,7 +451,7 @@
     const NPC_COUNT = 5;
     const MAX_POLICE_CARS = 3;
 
-    // --- ENTITY CLASS DEFINITIONS (Moved up to prevent ReferenceError) ---
+    // --- ENTITY CLASS DEFINITIONS (Unchanged) ---
 
     // Police Car Class
     class PoliceCar {
@@ -426,7 +465,7 @@
             this.maxSpeed = 2.5;
             this.acceleration = 0.05;
             this.handling = 0.1;
-            this.color = '#000000'; // Black Car body
+            this.color = '#000000';
             this.chasing = false;
         }
 
@@ -509,6 +548,36 @@
 
     // --- RENDERING / HUD FUNCTIONS ---
 
+    // Function to draw the CLUBS portal
+    function drawPortal() {
+        const P = CLUBS_PORTAL;
+
+        // 1. Draw the purple rectangle body
+        ctx.fillStyle = P.color;
+        ctx.fillRect(P.x, P.y, P.width, P.height);
+
+        // 2. Add glowing cyan border/shadow
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00f0ff';
+        ctx.strokeRect(P.x, P.y, P.width, P.height);
+
+        // 3. Draw the CLUBS text
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = '24px Roboto Mono';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#00f0ff';
+        ctx.fillText(P.text, P.x + P.width / 2, P.y + P.height / 2);
+
+        // Reset shadow properties
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+    }
+
+
     function updateHUD() {
         document.getElementById('cashText').textContent = `$${player.cash}`;
 
@@ -545,12 +614,12 @@
         }
     }
 
-    function drawCar(x, y, angle) {
+    function drawCar(x, y, angle, colorOverride) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
 
-        ctx.fillStyle = player.color;
+        ctx.fillStyle = colorOverride || player.color;
         ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
 
         ctx.fillStyle = '#ffff00';
@@ -575,7 +644,6 @@
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // FIX APPLIED HERE: Only draw checkpoint counter if the mission type is 'checkpoint'
         if (mission.type === 'checkpoint') {
             ctx.fillStyle = '#00f0ff';
             ctx.font = '14px Roboto Mono';
@@ -620,19 +688,16 @@
                 const y = r * TILE_SIZE;
 
                 if (type === TERRAIN_TYPE.PARK) {
-                    // Park/Green Area
                     ctx.fillStyle = '#005f00';
                     ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
                     ctx.strokeStyle = '#007f00';
                     ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
                 } else if (type === TERRAIN_TYPE.WATER) {
-                    // Water/Hazard Area
                     ctx.fillStyle = '#00003f';
                     ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
                     ctx.strokeStyle = '#008cff';
                     ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
                 } else if (type === TERRAIN_TYPE.BLOCK) {
-                     // Standard Building Block
                     ctx.fillStyle = '#2a2a4a';
                     ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
                     ctx.strokeStyle = '#4e556e';
@@ -641,7 +706,7 @@
             }
         }
 
-        // Redraw roads over blocks for intersection lines (as before)
+        // Redraw roads over blocks for intersection lines
         ctx.strokeStyle = '#6c757d';
         ctx.lineWidth = TILE_SIZE / 2;
 
@@ -658,10 +723,68 @@
             ctx.lineTo(canvas.width, i * TILE_SIZE + TILE_SIZE / 2);
             ctx.stroke();
         }
+
+        // NEW: Draw the CLUBS Portal
+        drawPortal();
     }
 
 
     // --- GAME LOGIC FUNCTIONS ---
+
+    // NEW: Function to display the game selection and betting modal
+    function showGameSelectOverlay() {
+        // Prevent re-triggering the overlay
+        if (!document.getElementById('gameOverlay').classList.contains('hidden')) return;
+
+        player.speed = 0; // Stop the car
+
+        document.getElementById('modalContent').style.maxWidth = '450px';
+
+        const message = `<span class="text-cyan-400">WELCOME TO THE CLUBS</span>. Select a game to Join or Bet.`;
+
+        const actions = `
+            <div class="flex flex-col space-y-3 w-full">
+                <h3 class="text-lg text-white font-bold mt-2">CAR RACING</h3>
+                <div class="flex space-x-2">
+                    <a href="race.html" class="btn-action uniform-button text-sm" style="width: 50%; padding: 0.5rem 1rem;">JOIN RACE</a>
+                    <a href="race-bet.html" class="btn-secondary uniform-button text-sm" style="width: 50%; padding: 0.5rem 1rem;">BET ON RACE</a>
+                </div>
+
+                <h3 class="text-lg text-white font-bold mt-4">HORSE RACING</h3>
+                <div class="flex space-x-2">
+                    <a href="horse.html" class="btn-action uniform-button text-sm" style="width: 50%; padding: 0.5rem 1rem;">JOIN RACE</a>
+                    <a href="horse-bet.html" class="btn-secondary uniform-button text-sm" style="width: 50%; padding: 0.5rem 1rem;">BET ON RACE</a>
+                </div>
+
+                <button class="btn-secondary mt-4 uniform-button" onclick="hideOverlay()">EXIT CLUBS</button>
+            </div>
+        `;
+        showOverlay(message, actions);
+    }
+
+    // NEW: Function to check collision with the portal
+    function checkPortalCollision() {
+        const P = CLUBS_PORTAL;
+        const radius = CLUBS_COLLISION_RADIUS; // Use the new generous radius
+
+        const overlayVisible = !document.getElementById('gameOverlay').classList.contains('hidden');
+        if (mission.active || event.active || overlayVisible) return;
+
+        // Calculate the center of the portal rectangle
+        const portalCenterX = P.x + P.width / 2;
+        const portalCenterY = P.y + P.height / 2;
+
+        // Calculate the distance between player center and portal center
+        const distance = Math.sqrt(
+            (player.x - portalCenterX) ** 2 + (player.y - portalCenterY) ** 2
+        );
+
+        // Check if the player is within the generous collision radius
+        if (distance < radius) {
+            showGameSelectOverlay();
+        }
+    }
+
 
     function initTraffic() {
         for (let i = 0; i < NPC_COUNT; i++) {
@@ -844,7 +967,7 @@
 
         event.active = true;
         event.reward = Math.floor(Math.random() * 5000) + 2000;
-        event.duration = 30; // 30 seconds to complete
+        event.duration = 30; // 30 seconds to reach the drop
         event.startTime = performance.now();
         event.timeLeft = event.duration;
 
@@ -1023,7 +1146,7 @@
             return;
         }
 
-        const isOwned = colorData.cost === 0 || player.cash >= colorData.cost;
+        const isOwned = colorData.cost === 0 || player.cash >= colorData.cost || index === player.colorIndex;
 
         if (isOwned) {
             if (colorData.cost > 0) {
@@ -1200,9 +1323,9 @@
          if (canAfford) {
              message = `<span class="text-yellow-400">STATUS: HEAT ${player.heat}</span>. Bribe the officer for $${bribeCost} to reduce risk.`;
              actions = `
-                <button class="btn-action" onclick="bribePolice(); hideOverlay()">Pay Bribe</button>
-                <button class="btn-action" onclick="hideOverlay()">Keep Running</button>
-             `;
+                 <button class="btn-action" onclick="bribePolice(); hideOverlay()">Pay Bribe</button>
+                 <button class="btn-action" onclick="hideOverlay()">Keep Running</button>
+               `;
          } else {
              message = `<span class="text-red-400">STATUS: HEAT ${player.heat}</span>. Police are closing in, but you can't afford a bribe ($${bribeCost} needed).`;
              actions = `<button class="btn-action" onclick="hideOverlay()">Keep Running</button>`;
@@ -1264,7 +1387,7 @@
         if (keys['w'] || keys['ArrowUp']) {
             player.speed = Math.min(player.maxSpeed, player.speed + player.acceleration);
         } else if (keys['s'] || keys['ArrowDown']) {
-            player.speed = Math.max(-player.maxSpeed / 2, player.speed - player.acceleration);
+            player.speed = Math.max(-player.maxSpeed / 2, player.speed - player.deceleration);
         } else {
             if (player.speed > 0) player.speed = Math.max(0, player.speed - player.deceleration);
             if (player.speed < 0) player.speed = Math.min(0, player.speed + player.deceleration);
@@ -1294,6 +1417,7 @@
         // --- Collision Checks ---
         checkCollisions();
         checkInterception();
+        checkPortalCollision(); // NEW: Check for collision with the CLUBS portal
 
         // Update NPC Traffic
         npcCars.forEach(car => car.update());
@@ -1427,8 +1551,8 @@
         for (let r = ROWS - 4; r < ROWS; r++) {
             for (let c = COLS - 3; c < COLS; c++) {
                  if (cityMap[r][c] === TERRAIN_TYPE.BLOCK) {
-                    cityMap[r][c] = TERRAIN_TYPE.WATER;
-                }
+                     cityMap[r][c] = TERRAIN_TYPE.WATER;
+                 }
             }
         }
     }
@@ -1518,6 +1642,268 @@
         } catch (error) {
             console.error("Error saving game state:", error);
         }
+    }
+
+    // --- MULTIPLAYER: session utilities ---
+
+    // helper: random 6-character code
+    function makeSessionCode() {
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // avoid ambiguous chars
+        let out = '';
+        for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+        return out.toLowerCase();
+    }
+
+    // session doc path: multiplayer/{appId}/sessions/{code}
+    function getSessionDoc(code) {
+        return doc(db, `multiplayer/${appId}/sessions/${code}`);
+    }
+
+    // create a new session (host)
+    async function createSession() {
+        if (!hasFirebase || !isAuthReady) {
+            // This is the pop-up shown in the image, now triggered only if config is truly missing/invalid
+            alert('Multiplayer requires Firebase. Configure firebaseConfig first.');
+            return;
+        }
+        if (isMultiplayer) {
+            alert('Already in a multiplayer session. Leave first to create a new one.');
+            return;
+        }
+        const code = makeSessionCode();
+        const docRef = getSessionDoc(code);
+
+        const sessionData = {
+            createdAt: serverTimestamp(),
+            hostId: userId,
+            player1: {
+                uid: userId,
+                x: player.x,
+                y: player.y,
+                angle: player.angle,
+                speed: player.speed,
+                color: player.color,
+                lastUpdate: Date.now()
+            },
+            player2: null,
+            started: false
+        };
+
+        try {
+            await setDoc(docRef, sessionData);
+            // set local state to host
+            sessionCode = code;
+            sessionRef = docRef;
+            playerSlot = 'player1';
+            isMultiplayer = true;
+            setupSessionListener();
+            startMultiplayerUpdates();
+            showOverlay(`<div>Session created.<br>Code: <strong>${code.toUpperCase()}</strong></div>`, `<div class="flex flex-col space-y-2"><button class="btn-action uniform-button" onclick="hideOverlay()">OK</button><button class="btn-secondary uniform-button" onclick="leaveSession()">Leave Session</button></div>`);
+            updateHUD();
+        } catch (err) {
+            console.error('Error creating session:', err);
+            alert('Failed to create session. See console.');
+        }
+    }
+
+    // join existing session by code
+    async function joinSession(codeInput) {
+        if (!hasFirebase || !isAuthReady) {
+            alert('Multiplayer requires Firebase. Configure firebaseConfig first.');
+            return;
+        }
+        if (isMultiplayer) {
+            alert('Already in a multiplayer session. Leave first to join another.');
+            return;
+        }
+        const code = (codeInput || '').toLowerCase().trim();
+        if (!code) {
+            alert('Please enter a valid session code.');
+            return;
+        }
+        const docRef = getSessionDoc(code);
+
+        try {
+            const snap = await getDoc(docRef);
+            if (!snap.exists()) {
+                alert('No session found with that code.');
+                return;
+            }
+            const data = snap.data();
+
+            // if player2 slot empty, join as player2
+            if (!data.player2) {
+                await updateDoc(docRef, {
+                    player2: {
+                        uid: userId,
+                        x: player.x,
+                        y: player.y,
+                        angle: player.angle,
+                        speed: player.speed,
+                        color: player.color,
+                        lastUpdate: Date.now()
+                    }
+                });
+                sessionCode = code;
+                sessionRef = docRef;
+                playerSlot = 'player2';
+                isMultiplayer = true;
+                setupSessionListener();
+                startMultiplayerUpdates();
+                showOverlay(`<div>Joined session <strong>${code.toUpperCase()}</strong> — have fun!</div>`, `<div class="flex flex-col space-y-2"><button class="btn-action uniform-button" onclick="hideOverlay()">OK</button><button class="btn-secondary uniform-button" onclick="leaveSession()">Leave Session</button></div>`);
+                updateHUD();
+            } else {
+                alert('Session is full (already has 2 players).');
+            }
+        } catch (err) {
+            console.error('Error joining session:', err);
+            alert('Failed to join session. See console.');
+        }
+    }
+
+    // set up real-time listener for the session doc
+    let sessionUnsubscribe = null;
+    function setupSessionListener() {
+        if (!sessionRef) return;
+        if (sessionUnsubscribe) sessionUnsubscribe();
+
+        sessionUnsubscribe = onSnapshot(sessionRef, (snap) => {
+            if (!snap.exists()) {
+                // session removed
+                console.log('Session was removed.');
+                stopMultiplayer('Session closed.');
+                return;
+            }
+            const data = snap.data();
+
+            // determine opponent slot and read their state
+            const mySlot = playerSlot;
+            const oppSlot = mySlot === 'player1' ? 'player2' : 'player1';
+            const opp = data[oppSlot];
+
+            if (opp && opp.uid && opp.uid !== userId) {
+                opponentState = {
+                    x: opp.x,
+                    y: opp.y,
+                    angle: opp.angle,
+                    speed: opp.speed,
+                    color: opp.color
+                };
+                opponentLastSeen = performance.now();
+            }
+
+            // if other player left, set opponentState null
+            if (!opp || !opp.uid) {
+                opponentState = null;
+            }
+        }, (err) => {
+            console.error('Session snapshot error:', err);
+        });
+    }
+
+    // write local player state to session doc at a throttled interval
+    function startMultiplayerUpdates() {
+        if (!isMultiplayer || !sessionRef || !playerSlot) return;
+        stopMultiplayerUpdates(); // safety
+
+        const writeData = async () => {
+            if (!sessionRef || !playerSlot) return;
+            try {
+                const payload = {
+                    uid: userId,
+                    x: player.x,
+                    y: player.y,
+                    angle: player.angle,
+                    speed: player.speed,
+                    color: player.color,
+                    lastUpdate: Date.now()
+                };
+                const updateObj = {};
+                updateObj[playerSlot] = payload;
+                await updateDoc(sessionRef, updateObj);
+            } catch (err) {
+                console.error('Error writing multiplayer state:', err);
+            }
+        };
+
+        // initial write
+        writeData();
+
+        // repeating interval
+        multiplayerUpdateInterval = setInterval(() => {
+            // only write when playing (reduce writes if overlay visible)
+            if (!document.getElementById('gameOverlay').classList.contains('hidden')) return;
+            writeData();
+        }, MULTIPLAYER_WRITE_MS);
+    }
+
+    function stopMultiplayerUpdates() {
+        if (multiplayerUpdateInterval) {
+            clearInterval(multiplayerUpdateInterval);
+            multiplayerUpdateInterval = null;
+        }
+    }
+
+    // leave session / cleanup
+    async function leaveSession() {
+        // if not in session, nothing to do
+        if (!isMultiplayer || !sessionRef || !playerSlot) {
+            isMultiplayer = false;
+            sessionCode = null;
+            playerSlot = null;
+            sessionRef = null;
+            opponentState = null;
+            updateHUD();
+            return;
+        }
+
+        // remove our slot from session doc
+        try {
+            const emptyObj = {};
+            emptyObj[playerSlot] = null;
+            await updateDoc(sessionRef, emptyObj);
+
+            // if both players gone, delete session (best-effort)
+            const snap = await getDoc(sessionRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                if (!data.player1 && !data.player2) {
+                    try {
+                        await deleteDoc(sessionRef);
+                    } catch (err) {
+                        // ignore
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('Error leaving session:', err);
+        }
+
+        // stop listeners and updates
+        if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
+        stopMultiplayerUpdates();
+
+        isMultiplayer = false;
+        sessionCode = null;
+        playerSlot = null;
+        sessionRef = null;
+        opponentState = null;
+        updateHUD();
+        hideOverlay();
+    }
+
+    function stopMultiplayer(msg) {
+        // generic stop: show optional alert and cleanup
+        if (msg) {
+            showOverlay(`<div>${msg}</div>`, `<button class="btn-action uniform-button" onclick="hideOverlay()">OK</button>`);
+        }
+        if (sessionUnsubscribe) { sessionUnsubscribe(); sessionUnsubscribe = null; }
+        stopMultiplayerUpdates();
+        isMultiplayer = false;
+        sessionCode = null;
+        playerSlot = null;
+        opponentState = null;
+        updateHUD();
     }
 
     // --- UPGRADE LOGIC ---
@@ -1617,6 +2003,48 @@
     window.recoverFromHazard = recoverFromHazard;
     window.startRandomEvent = startRandomEvent;
     window.endEvent = endEvent;
+    window.showGameSelectOverlay = showGameSelectOverlay; // EXPOSED CLUBS PORTAL MODAL
+
+    // MULTIPLAYER UI bindings
+    window.showMultiplayerOverlay = function() {
+        // Minimal UI with Create and Join fields
+        const content = `
+            <p class="text-sm text-white mb-2">Play With Friends — Create a session or join with a code.</p>
+            <div class="flex flex-col space-y-2">
+                <button class="btn-action uniform-button" onclick="createSession()">Create (Get Code)</button>
+                <div class="flex space-space-x-2">
+                    <input id="joinCodeInput" placeholder="Enter code" class="p-2 rounded-lg bg-[#0f0f1a] text-white w-full" />
+                    <button class="btn-secondary" onclick="(function(){ const v=document.getElementById('joinCodeInput').value; joinSession(v); })()">Join</button>
+                </div>
+                <button class="btn-secondary mt-2 uniform-button" onclick="hideOverlay()">Cancel</button>
+            </div>
+        `;
+        showOverlay('', content);
+    };
+
+    window.createSession = createSession;
+    window.joinSession = joinSession;
+    window.leaveSession = leaveSession;
+
+    // Cleanup when page unloads
+    window.addEventListener('beforeunload', async (e) => {
+        try {
+            if (isMultiplayer && sessionRef && playerSlot) {
+                const emptyObj = {};
+                emptyObj[playerSlot] = null;
+                await updateDoc(sessionRef, emptyObj);
+            }
+        } catch (err) {
+            // ignore
+        }
+    });
+
+    // Periodic check: if opponent hasn't been seen for long, clear opponentState
+    setInterval(() => {
+        if (isMultiplayer && opponentState && performance.now() - opponentLastSeen > OPPONENT_TIMEOUT_MS) {
+            opponentState = null;
+        }
+    }, 1000);
 
 </script>
 

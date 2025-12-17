@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Hustle: Slot Machine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a2e;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #00f0ff;
+        }
+        .betting-panel {
+            background-color: rgba(13, 13, 30, 0.95);
+            border: 3px solid #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
+            width: 95%;
+            max-width: 600px;
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+        .btn-action {
+            background-color: #ff007f;
+            color: #0d0d1e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #b8005b;
+        }
+        .btn-secondary {
+            background-color: #00f0ff;
+            color: #1a1a2e;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px #00aaff;
+        }
+        .btn-bet {
+            padding: 10px 15px;
+            border-radius: 0.5rem;
+            margin: 5px;
+            font-size: 0.9rem;
+            background-color: #2a2a4a;
+            color: #00f0ff;
+            border: 1px solid #00f0ff;
+            transition: all 0.1s;
+        }
+
+        #slotReels {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            width: 90%;
+            height: 120px;
+            margin: 20px auto;
+            border: 5px solid #00f0ff;
+            border-radius: 10px;
+            background: #0d0d1e;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+            overflow: hidden;
+        }
+        .reel {
+            width: 30%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ff007f;
+            text-shadow: 0 0 10px #ff007f;
+            background: #2a2a4a;
+            border-left: 2px solid #00f0ff;
+            border-right: 2px solid #00f0ff;
+            transition: background 0.1s;
+        }
+        .reel:first-child { border-left: none; }
+        .reel:last-child { border-right: none; }
+    </style>
+</head>
+<body onclick="startMusic()"> <video id="bgMusic" loop playsinline style="display:none;">
+    <source src="music6 (1).mp4" type="video/mp4">
+</video>
+
+<div class="betting-panel">
+    <div class="flex justify-between items-center mb-4 border-b border-white pb-2">
+        <h1 class="text-2xl font-bold">NEON SLOTS</h1>
+        <div class="text-lg">CASH: <span id="currentCash">$5000</span></div>
+    </div>
+
+    <div id="slotReels">
+        <div id="reel1" class="reel">?</div>
+        <div id="reel2" class="reel">?</div>
+        <div id="reel3" class="reel">?</div>
+    </div>
+
+    <div class="flex justify-between items-center mb-4">
+        <div class="text-lg">BET: <span id="betAmountDisplay">$0</span></div>
+        <div class="text-lg text-yellow-400">LAST WIN: <span id="lastWinDisplay">$0</span></div>
+    </div>
+
+    <div id="betAmountButtons" class="flex flex-wrap justify-center mb-6">
+        <button class="btn-bet" data-amount="100" onclick="handleBetAmount(100)">$100</button>
+        <button class="btn-bet" data-amount="500" onclick="handleBetAmount(500)">$500</button>
+        <button class="btn-bet" data-amount="1000" onclick="handleBetAmount(1000)">$1000</button>
+        <button class="btn-bet" data-amount="5000" onclick="handleBetAmount(5000)">$5000</button>
+        <button class="btn-bet" data-amount="0" style="background-color: #ff007f;" onclick="handleBetAmount(0)">CLEAR</button>
+    </div>
+
+    <button id="spinButton" class="btn-action w-full" onclick="startSpin()">
+        SPIN
+    </button>
+
+    <div id="resultDisplay" class="text-center mt-4 text-xl font-bold"></div>
+
+    <a href="clubs.html" class="btn-secondary w-full block mt-4 text-center">EXIT CLUB</a>
+</div>
+
+<script type="module">
+    import { loadPlayerState, savePlayerCash } from './betting-logic.js';
+    import { spinSlot, SYMBOL_EMOJIS } from './slot-logic.js';
+
+    // --- GAME STATE ---
+    let playerCash = 5000;
+    let betAmount = 0;
+    let lastWin = 0;
+    let gameInProgress = false;
+    let musicStarted = false; // Flag to track if music has been unlocked
+
+    const REEL_ELEMENTS = [
+        document.getElementById('reel1'),
+        document.getElementById('reel2'),
+        document.getElementById('reel3')
+    ];
+    const bgMusic = document.getElementById('bgMusic');
+
+    // --- INITIALIZATION ---
+    async function initializeSlots() {
+        playerCash = await loadPlayerState();
+        updateDisplay();
+        bgMusic.volume = 0.5; // Set background volume to 50%
+    }
+
+    // --- MUSIC CONTROLS ---
+    window.startMusic = function() {
+        if (!musicStarted) {
+            bgMusic.play().then(() => {
+                musicStarted = true;
+            }).catch(e => console.log("Music waiting for interaction..."));
+        }
+    }
+
+    // --- UI FUNCTIONS ---
+    function updateDisplay() {
+        document.getElementById('currentCash').textContent = `$${playerCash}`;
+        document.getElementById('betAmountDisplay').textContent = `$${betAmount}`;
+        document.getElementById('lastWinDisplay').textContent = `$${lastWin}`;
+
+        const spinButton = document.getElementById('spinButton');
+        const canSpin = betAmount > 0 && betAmount <= playerCash && !gameInProgress;
+        spinButton.disabled = !canSpin;
+        spinButton.textContent = gameInProgress ? "REELS SPINNING..." : "SPIN";
+    }
+
+    window.handleBetAmount = function(amount) {
+        startMusic(); // Trigger music on interaction
+        if (amount === 0) {
+            betAmount = 0;
+        } else if (betAmount + amount <= playerCash) {
+            betAmount += amount;
+        } else {
+            betAmount = playerCash;
+        }
+        updateDisplay();
+    }
+
+    // --- CORE GAME LOGIC ---
+    window.startSpin = async function() {
+        startMusic(); // Trigger music on spin
+        if (betAmount <= 0 || betAmount > playerCash || gameInProgress) return;
+
+        gameInProgress = true;
+        lastWin = 0;
+        updateDisplay();
+
+        const resultDisplay = document.getElementById('resultDisplay');
+        resultDisplay.innerHTML = `<span class="text-white">Deducting $${betAmount}...</span>`;
+
+        // 1. Deduct cash immediately
+        playerCash -= betAmount;
+        await savePlayerCash(playerCash);
+        updateDisplay();
+
+        // 2. Start Visual Spin Animation
+        let spinDuration = 2000;
+        REEL_ELEMENTS.forEach(reel => reel.textContent = '⚡');
+
+        // 3. Simulate Spin
+        await new Promise(resolve => setTimeout(resolve, spinDuration));
+
+        // 4. Get Result and Calculate Payout
+        const { reels, payout, winType } = spinSlot(betAmount);
+
+        // 5. Update Reels Visually
+        REEL_ELEMENTS.forEach((reel, index) => {
+            reel.textContent = SYMBOL_EMOJIS[reels[index]];
+        });
+
+        // 6. Process Payout
+        playerCash += payout;
+        await savePlayerCash(playerCash);
+
+        lastWin = payout; // Shows the amount won this spin
+
+        let resultMessage = '';
+        if (payout > 0) {
+            resultMessage = `<span class="text-yellow-400">${winType}! WON $${payout}.</span>`;
+        } else {
+            resultMessage = `<span class="text-red-500">TRY AGAIN.</span>`;
+        }
+
+        resultDisplay.innerHTML = resultMessage;
+
+        // 7. Reset state
+        gameInProgress = false;
+        updateDisplay();
+    }
+
+    window.onload = initializeSlots;
+</script>
+</body>
+</html>
