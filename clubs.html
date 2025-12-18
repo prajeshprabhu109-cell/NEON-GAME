@@ -84,6 +84,18 @@
             font-weight: bold;
         }
 
+        .input-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #00f0ff;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+            outline: none;
+        }
+
         .betting-hub::-webkit-scrollbar { width: 4px; }
         .betting-hub::-webkit-scrollbar-thumb { background: #00f0ff; border-radius: 10px; }
     </style>
@@ -95,8 +107,14 @@
 
     <div id="muteBtn" onclick="toggleMute()">🔈 MUTE MUSIC</div>
 
-    <div id="userProfile" class="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
-        <button id="loginBtn" class="w-full py-2 bg-blue-600 rounded-lg text-xs font-bold text-white">SIGN IN WITH GOOGLE</button>
+    <div id="registrationArea" class="mt-4 p-4 bg-white/5 rounded-xl border border-cyan-500/30">
+        <input type="text" id="playerNameInput" class="input-bar" placeholder="ENTER PLAYER NAME...">
+        <button onclick="registerPlayer()" class="w-full py-2 bg-cyan-600 rounded-lg text-xs font-bold text-white hover:bg-cyan-400 transition">SYNC PLAYER PROFILE</button>
+    </div>
+
+    <div id="vipKeys" style="display: none;" class="mt-4 p-3 bg-yellow-500/20 border border-yellow-500 rounded-xl animate-pulse">
+        <div class="text-[9px] text-yellow-500 font-bold">VIP ACCESS UNLOCKED</div>
+        <div class="text-xs text-white">USER: <span class="font-bold">VIP_HUSTLER</span> | PASS: <span class="font-bold">NEON2025</span></div>
     </div>
 
     <div class="mt-4">
@@ -137,10 +155,13 @@
         <a href="slot.html" class="btn-game btn-neon-green" style="width: 100%;">💎 SLOTS</a>
     </div>
 
+    <div class="btn-group">
+        <a href="vip.html" class="btn-game bg-yellow-600 text-black border-2 border-yellow-400" style="width: 100%;">⭐ ENTER VIP PLATINUM LOUNGE</a>
+    </div>
+
     <div class="section-title">Global Top 5</div>
     <div class="leaderboard-container" id="leaderboardList">
-        <p class="text-[10px] text-gray-500">Syncing rankings...</p>
-    </div>
+        </div>
 
     <a href="perfect.html" target="_top" class="mt-6 block text-gray-500 hover:text-cyan-400 font-bold text-xs">← RETURN TO CITY GRID</a>
 </div>
@@ -149,29 +170,14 @@
     <source src="music1 (1).mp4" type="video/mp4">
 </video>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getDatabase, ref, get, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        appId: "YOUR_APP_ID"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    const provider = new GoogleAuthProvider();
-
+<script>
     const balanceDisplay = document.getElementById('balanceDisplay');
-    const userProfile = document.getElementById('userProfile');
     const leaderboardList = document.getElementById('leaderboardList');
     const music = document.getElementById('clubMusic');
+
+    // Mock Competitors for the "Global" feel
+    const mockCompetitors = [
+    ];
 
     window.toggleMute = function() {
         if (music.muted) {
@@ -185,12 +191,6 @@
         }
     };
 
-    document.getElementById('loginBtn').addEventListener('click', () => {
-        signInWithRedirect(auth, provider);
-    });
-
-    getRedirectResult(auth).catch((error) => console.error("Login Error:", error));
-
     function refreshCashUI() {
         let cash = localStorage.getItem('currentPlayerCash');
         if (cash === null) {
@@ -198,46 +198,45 @@
             localStorage.setItem('currentPlayerCash', 5000);
         }
         balanceDisplay.innerText = cash;
+        updateLeaderboard();
     }
 
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            userProfile.innerHTML = `
-                <div class="flex items-center gap-3">
-                    <img src="${user.photoURL}" class="w-8 h-8 rounded-full border border-cyan-400">
-                    <div class="text-left"><div class="text-[9px] text-gray-500">PLAYER</div><div class="text-xs font-bold text-white">${user.displayName.toUpperCase()}</div></div>
-                </div>`;
+    // FUNCTION TO REGISTER PLAYER & REVEAL VIP KEYS
+    window.registerPlayer = function() {
+        const nameInput = document.getElementById('playerNameInput').value;
+        if (!nameInput) return alert("PLAYER IDENTITY REQUIRED");
 
-            const userRef = ref(db, 'users/' + user.uid);
-            const snapshot = await get(userRef);
-            let cash = parseInt(localStorage.getItem('currentPlayerCash'));
+        localStorage.setItem('neon_player_name', nameInput);
+        document.getElementById('registrationArea').style.display = 'none';
+        document.getElementById('vipKeys').style.display = 'block';
+        updateLeaderboard();
+    };
 
-            if (snapshot.exists()) {
-                cash = snapshot.val().cash;
-            } else {
-                await set(userRef, { name: user.displayName, cash: cash });
-            }
-            localStorage.setItem('currentPlayerCash', cash);
-            balanceDisplay.innerText = cash;
-            update(ref(db, 'leaderboard/' + user.uid), { name: user.displayName, cash: cash });
+    function updateLeaderboard() {
+        const playerName = localStorage.getItem('neon_player_name') || "Guest_User";
+        const playerCash = parseInt(localStorage.getItem('currentPlayerCash')) || 5000;
+
+        let allPlayers = [...mockCompetitors, { name: playerName, cash: playerCash }];
+        allPlayers.sort((a, b) => b.cash - a.cash);
+
+        leaderboardList.innerHTML = allPlayers.slice(0, 5).map((p, i) => `
+            <div class="leader-row ${p.name === playerName ? 'bg-cyan-500/10' : ''}">
+                <span class="font-bold">${i+1}. ${p.name.toUpperCase()}</span>
+                <span class="text-green-400 font-bold">$${p.cash.toLocaleString()}</span>
+            </div>`).join('');
+    }
+
+    // Initialize State
+    window.onload = () => {
+        const savedName = localStorage.getItem('neon_player_name');
+        if (savedName) {
+            document.getElementById('registrationArea').style.display = 'none';
+            document.getElementById('vipKeys').style.display = 'block';
         }
         refreshCashUI();
-    });
-
-    onValue(ref(db, 'leaderboard'), (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            const players = Object.values(data).sort((a, b) => b.cash - a.cash).slice(0, 5);
-            leaderboardList.innerHTML = players.map((p, i) => `
-                <div class="leader-row">
-                    <span>${i+1}. ${p.name.split(' ')[0]}</span>
-                    <span class="text-green-400 font-bold">$${p.cash}</span>
-                </div>`).join('');
-        }
-    });
+    };
 
     document.body.addEventListener('click', () => music.play(), { once: true });
-    refreshCashUI();
 </script>
 </body>
 </html>
