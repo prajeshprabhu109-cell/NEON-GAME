@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON HUSTLE: VAI RAJA VAI ELITE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --neon-gold: #ffd700; --neon-pink: #ff007f; --neon-cyan: #00f0ff; --neon-blue: #1a237e; }
+
+        body {
+            background: url('https://watermark.lovepik.com/photo/20211122/large/lovepik-night-view-of-california-usa-picture_500754692.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: var(--neon-cyan); font-family: 'Orbitron', sans-serif;
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; margin: 0;
+        }
+
+        .vip-terminal {
+            background: rgba(0, 0, 0, 0.9); border: 4px solid var(--neon-gold);
+            border-radius: 40px; width: 95%; max-width: 1200px;
+            height: 92vh; padding: 1.5rem; display: flex;
+            flex-direction: column; position: relative; box-sizing: border-box;
+        }
+
+        /* SCOREBOARD & HUD PANELS */
+        .scoreboard {
+            border: 2px solid var(--neon-cyan); border-radius: 20px;
+            padding: 20px; text-align: center; background: rgba(0, 240, 255, 0.05);
+            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .score-large { font-size: 5rem; font-weight: 900; text-shadow: 0 0 20px var(--neon-cyan); color: #fff; }
+        .hud-panel {
+            border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 10px;
+            background: rgba(0,0,0,0.5); padding: 12px; position: relative;
+        }
+        .hud-title { font-size: 0.6rem; color: var(--neon-cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* TABS */
+        .nav-tabs { display: flex; gap: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #222; }
+        .tab-link { cursor: pointer; padding: 10px 0; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; color: var(--neon-gold); opacity: 0.4; transition: 0.4s; }
+        .tab-link.active { opacity: 1; border-bottom: 3px solid var(--neon-gold); }
+
+        /* BETTING HUB SPECIFIC */
+        .game-selector-ring {
+            width: 280px; height: 280px; border-radius: 50%;
+            border: 4px double var(--neon-pink);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 30px rgba(255, 0, 127, 0.3);
+            position: relative; background: radial-gradient(circle, rgba(255,0,127,0.1) 0%, transparent 70%);
+        }
+        .wager-table { width: 100%; border-collapse: collapse; font-size: 0.55rem; color: #fff; text-align: center; }
+        .wager-table th { border-bottom: 1px solid var(--neon-pink); padding: 5px; color: var(--neon-pink); }
+        .wager-table td { padding: 5px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        .btn-bet {
+            background: linear-gradient(45deg, #ffd700, #b8860b); color: #000;
+            font-weight: 900; padding: 0.8rem; border-radius: 8px;
+            width: 100%; border: none; cursor: pointer; margin-top: 10px;
+        }
+        .pointer {
+            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            z-index: 100; border-left: 12px solid transparent; border-right: 12px solid transparent;
+            border-top: 25px solid var(--neon-gold); filter: drop-shadow(0 0 8px var(--neon-gold));
+        }
+    </style>
+</head>
+<body>
+
+    <div class="vip-terminal">
+        <div class="flex justify-between items-center mb-4">
+            <div class="text-[9px] tracking-widest text-gold-400">ESP SYSTEM ACTIVE V.16.5</div>
+            <div class="text-green-400 text-xl font-black">$<span id="vipBalance">0</span></div>
+        </div>
+
+        <div class="nav-tabs">
+            <div id="tab-casino" class="tab-link active" onclick="switchTab('casino')">Elite Casino</div>
+            <div id="tab-terminal" class="tab-link" onclick="switchTab('terminal')">Global Prediction Terminal</div>
+            <div id="tab-hub" class="tab-link" onclick="switchTab('hub')">Global Betting Hub</div>
+        </div>
+
+        <div id="content-casino" class="tab-content flex items-center justify-around flex-1 gap-8">
+            <div class="relative w-[340px] h-[340px] flex-shrink-0">
+                <div class="pointer"></div>
+                <div id="wheel" class="w-full h-full rounded-full border-[10px] border-[#111] overflow-hidden relative shadow-[0_0_50px_#000]" style="transition: transform 5s cubic-bezier(0.15, 0, 0.15, 1);"></div>
+            </div>
+            <div class="max-w-[380px] w-full flex flex-col gap-4">
+                <div class="bg-white/5 p-6 border-2 border-pink-500 rounded-3xl text-center">
+                    <p class="text-[10px] text-gray-400 mb-4 tracking-[4px]">ANALYZING OUTCOME</p>
+                    <input type="text" id="colorPrediction" class="bg-black border-2 border-neon-gold text-white p-3 rounded-lg w-full text-center text-xl outline-none" placeholder="ENTER COLOR">
+                </div>
+                <button onclick="spinEliteWheel()" id="spinBtn" class="btn-bet text-sm uppercase">Activate Elite Spin</button>
+            </div>
+        </div>
+
+        <div id="content-terminal" class="tab-content hidden flex-1 grid grid-cols-12 gap-4">
+            <div class="col-span-3 flex flex-col gap-4">
+                <div class="hud-panel flex-1">
+                    <div class="hud-title">Live Video Feed</div>
+                    <video autoplay loop muted class="w-full h-[160px] object-cover rounded border border-cyan-500 opacity-70">
+                        <source src="bad.mp4" type="video/mp4">
+                    </video>
+                </div>
+                <div class="hud-panel">
+                    <div class="hud-title">Match Accuracy</div>
+                    <div class="text-3xl font-black text-white">98.8%</div>
+                </div>
+            </div>
+            <div class="col-span-6 flex flex-col gap-4">
+                <div class="scoreboard flex-1 flex flex-col justify-center">
+                    <div class="text-xs tracking-[5px] mb-4">PARKER vs OPPONENT</div>
+                    <div class="flex justify-around items-center">
+                        <div class="score-large">15</div>
+                        <div class="text-xl opacity-30">vs</div>
+                        <div class="score-large">12</div>
+                    </div>
+                </div>
+                <div class="hud-panel text-center">
+                    <div class="hud-title">Point Prediction</div>
+                    <input type="number" class="bg-transparent border-b-2 border-neon-cyan text-white text-4xl w-32 text-center font-black outline-none" placeholder="00">
+                    <button class="btn-bet max-w-xs mx-auto">Place Tactical Bet</button>
+                </div>
+            </div>
+            <div class="col-span-3 flex flex-col gap-4">
+                <div class="hud-panel flex-1">
+                    <div class="hud-title">Live Betting Board</div>
+                    <div class="flex justify-between text-[0.6rem] mb-2"><span>PARKER WIN GAME</span><span class="text-cyan-400">1.8x</span></div>
+                    <div class="flex justify-between text-[0.6rem]"><span>OPPONENT WIN GAME</span><span class="text-cyan-400">3.5x</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-hub" class="tab-content hidden flex-1 grid grid-cols-12 gap-4">
+            <div class="col-span-3 flex flex-col gap-3">
+                <div class="hud-panel flex-1">
+                    <div class="hud-title text-pink-500">Featured: Black Jack</div>
+                    <div class="bg-black/80 rounded h-32 mb-4 flex items-center justify-center border border-pink-500/30">
+                        <span class="text-[10px] opacity-50 italic">Live Dealer Feed...</span>
+                    </div>
+                    <div class="text-[0.5rem] space-y-1">
+                        <p>PARKER WINS HAND <span class="float-right text-pink-500">2.5x</span></p>
+                        <p>DEALER BUSTS <span class="float-right text-pink-500">1.9x</span></p>
+                    </div>
+                    <input type="number" class="bg-black/50 border border-pink-500/50 w-full mt-3 p-1 text-center text-[0.7rem]" placeholder="ENTER AMT">
+                    <button class="btn-bet" style="background: var(--neon-cyan)">PLACE HUB BET</button>
+                </div>
+            </div>
+
+            <div class="col-span-6 flex flex-col items-center justify-center">
+                <div class="game-selector-ring">
+                    <div class="text-center">
+                        <div class="text-[8px] opacity-50 tracking-[3px]">ACTIVE HUB</div>
+                        <div class="text-xl font-black text-white">GAME SELECTOR</div>
+                        <div class="flex gap-4 mt-2 text-[8px] text-pink-500">
+                            <span>POKER</span><span>ROULETTE</span><span>SLOTS</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hud-panel mt-4 w-full h-32 overflow-y-auto">
+                    <div class="hud-title">My Wagers</div>
+                    <table class="wager-table">
+                        <thead><tr><th>GAME</th><th>SELECTION</th><th>ODDS</th><th>STATUS</th></tr></thead>
+                        <tbody>
+                            <tr><td>BADMINTON</td><td>PARKER</td><td>1.8x</td><td>OPEN</td></tr>
+                            <tr><td>CASINO</td><td>GOLD</td><td>10.0x</td><td>OPEN</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-span-3 flex flex-col gap-3">
+                <div class="hud-panel flex-1">
+                    <div class="hud-title">Hub Live Bets</div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between text-[0.55rem]"><span>PLAYER WINS ROULETTE</span><span class="text-cyan-400">3.8x</span></div>
+                        <div class="flex justify-between text-[0.55rem]"><span>ROYAL FLUSH (POKER)</span><span class="text-cyan-400">500x</span></div>
+                        <div class="flex justify-between text-[0.55rem]"><span>DEALER 21 (BLACKJACK)</span><span class="text-cyan-400">2.1x</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 1621700;
+    const sectors = [
+        { color: "#ffd700", val: 50000, name: "GOLD" }, { color: "#ff007f", val: 25000, name: "PINK" },
+        { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" },
+        { color: "#ffd700", val: 50000, name: "GOLD" }, { color: "#ff007f", val: 25000, name: "PINK" },
+        { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" },
+        { color: "#ffd700", val: 50000, name: "GOLD" }, { color: "#ff007f", val: 25000, name: "PINK" },
+        { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" },
+        { color: "#ffd700", val: 50000, name: "GOLD" }, { color: "#ff007f", val: 25000, name: "PINK" },
+        { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" }
+    ];
+
+    function init() {
+        document.getElementById('vipBalance').innerText = cash.toLocaleString();
+        const wheel = document.getElementById('wheel');
+        const angle = 360 / sectors.length;
+        sectors.forEach((s, i) => {
+            const slice = document.createElement('div');
+            slice.style.cssText = `position:absolute;width:50%;height:50%;transform-origin:100% 100%;left:0;top:0;border:1px solid rgba(0,0,0,0.1);`;
+            slice.style.transform = `rotate(${i * angle - (angle / 2)}deg) skewY(${90 - angle}deg)`;
+            slice.style.backgroundColor = s.color;
+            wheel.appendChild(slice);
+        });
+    }
+
+    window.spinEliteWheel = function() {
+        const pred = document.getElementById('colorPrediction').value.toUpperCase().trim();
+        if(!pred) return alert("ENTER COLOR PREDICTION!");
+        const btn = document.getElementById('spinBtn');
+        btn.disabled = true;
+        const randomDeg = Math.floor(Math.random() * 360);
+        const totalDeg = 3600 + randomDeg;
+        document.getElementById('wheel').style.transform = `rotate(${totalDeg}deg)`;
+        setTimeout(() => {
+            const sectorAngle = 360 / sectors.length;
+            const finalAngle = totalDeg % 360;
+            const landedIndex = Math.floor(((360 - finalAngle + (sectorAngle / 2)) % 360) / sectorAngle) % sectors.length;
+            const prize = sectors[landedIndex];
+            cash += prize.val;
+            let msg = `LANDED ON ${prize.name}!`;
+            if(pred === prize.name) { cash += 1000; msg += "\n🎯 ESP BONUS +$1,000!"; }
+            else { cash -= 200; msg += "\n❌ MISMATCH -$200."; }
+            updateUI(); alert(msg); btn.disabled = false;
+        }, 5000);
+    };
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+        const content = document.getElementById(`content-${tab}`);
+        content.classList.remove('hidden');
+        if(tab === 'casino') content.style.display = 'flex';
+        else content.style.display = 'grid';
+        event.currentTarget.classList.add('active');
+    }
+
+    function updateUI() { document.getElementById('vipBalance').innerText = cash.toLocaleString(); localStorage.setItem('currentPlayerCash', cash); }
+    window.addEventListener('load', init);
+</script>
+</body>
+</html>
