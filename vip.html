@@ -17,6 +17,8 @@
             overflow: hidden; margin: 0;
         }
 
+        .hidden { display: none !important; }
+
         .vip-terminal {
             background: rgba(0, 0, 0, 0.9); border: 4px solid var(--neon-gold);
             border-radius: 40px; width: 95%; max-width: 1200px;
@@ -24,7 +26,6 @@
             flex-direction: column; position: relative; box-sizing: border-box;
         }
 
-        /* SCOREBOARD & HUD PANELS */
         .scoreboard {
             border: 2px solid var(--neon-cyan); border-radius: 20px;
             padding: 20px; text-align: center; background: rgba(0, 240, 255, 0.05);
@@ -37,12 +38,10 @@
         }
         .hud-title { font-size: 0.6rem; color: var(--neon-cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
 
-        /* TABS */
         .nav-tabs { display: flex; gap: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #222; }
         .tab-link { cursor: pointer; padding: 10px 0; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; color: var(--neon-gold); opacity: 0.4; transition: 0.4s; }
         .tab-link.active { opacity: 1; border-bottom: 3px solid var(--neon-gold); }
 
-        /* BETTING HUB SPECIFIC */
         .game-selector-ring {
             width: 280px; height: 280px; border-radius: 50%;
             border: 4px double var(--neon-pink);
@@ -98,9 +97,11 @@
             <div class="col-span-3 flex flex-col gap-4">
                 <div class="hud-panel flex-1">
                     <div class="hud-title">Live Video Feed</div>
-                    <video autoplay loop muted class="w-full h-[160px] object-cover rounded border border-cyan-500 opacity-70">
-                        <source src="bad.mp4" type="video/mp4">
-                    </video>
+                    <div class="w-full h-[160px] bg-black/40 rounded border border-cyan-500 flex items-center justify-center overflow-hidden">
+                        <video id="badVid" autoplay loop muted class="w-full h-full object-cover opacity-70">
+                            <source src="bad (1).mp4" type="video/mp4">
+                        </video>
+                    </div>
                 </div>
                 <div class="hud-panel">
                     <div class="hud-title">Match Accuracy</div>
@@ -118,8 +119,8 @@
                 </div>
                 <div class="hud-panel text-center">
                     <div class="hud-title">Point Prediction</div>
-                    <input type="number" class="bg-transparent border-b-2 border-neon-cyan text-white text-4xl w-32 text-center font-black outline-none" placeholder="00">
-                    <button class="btn-bet max-w-xs mx-auto">Place Tactical Bet</button>
+                    <input id="pointPredValue" type="number" class="bg-transparent border-b-2 border-neon-cyan text-white text-4xl w-32 text-center font-black outline-none" placeholder="00">
+                    <br><button onclick="placeTacticalBet()" class="btn-bet max-w-xs mx-auto">Place Tactical Bet</button>
                 </div>
             </div>
             <div class="col-span-3 flex flex-col gap-4">
@@ -135,17 +136,17 @@
             <div class="col-span-3 flex flex-col gap-3">
                 <div class="hud-panel flex-1">
                     <div class="hud-title text-pink-500">Featured: Black Jack</div>
-                    <div class="bg-black/80 rounded h-32 mb-4 flex items-center justify-center border border-pink-500/30">
-                         <video autoplay loop muted class="w-full h-[120px] object-cover opacity-70">
-                        <source src="deal.mp4" type="video/mp4">
-                    </video>
-                </div>
+                    <div class="bg-black/80 rounded h-[120px] mb-4 border border-pink-500/30 flex items-center justify-center overflow-hidden">
+                        <video id="dealVid" autoplay loop muted class="w-full h-full object-cover opacity-70">
+                             <source src="deal (1).mp4" type="video/mp4">
+                        </video>
+                    </div>
                     <div class="text-[0.5rem] space-y-1">
                         <p>PARKER WINS HAND <span class="float-right text-pink-500">2.5x</span></p>
                         <p>DEALER BUSTS <span class="float-right text-pink-500">1.9x</span></p>
                     </div>
-                    <input type="number" class="bg-black/50 border border-pink-500/50 w-full mt-3 p-1 text-center text-[0.7rem]" placeholder="ENTER AMT">
-                    <button class="btn-bet" style="background: var(--neon-cyan)">PLACE HUB BET</button>
+                    <input id="hubBetAmt" type="number" class="bg-black/50 border border-pink-500/50 w-full mt-3 p-1 text-center text-[0.7rem]" placeholder="ENTER AMT">
+                    <button onclick="placeHubBet()" class="btn-bet" style="background: var(--neon-cyan)">PLACE HUB BET</button>
                 </div>
             </div>
 
@@ -163,10 +164,8 @@
                     <div class="hud-title">My Wagers</div>
                     <table class="wager-table">
                         <thead><tr><th>GAME</th><th>SELECTION</th><th>ODDS</th><th>STATUS</th></tr></thead>
-                        <tbody>
-                            <tr><td>BADMINTON</td><td>PARKER</td><td>1.8x</td><td>OPEN</td></tr>
-                            <tr><td>CASINO</td><td>GOLD</td><td>10.0x</td><td>OPEN</td></tr>
-                        </tbody>
+                        <tbody id="wagerList">
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -186,6 +185,13 @@
 
 <script>
     let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 1621700;
+
+    // Initial Wagers Data
+    let myWagers = [
+        { game: 'BADMINTON', selection: 'PARKER', odds: '1.8x', status: 'OPEN' },
+        { game: 'CASINO', selection: 'GOLD', odds: '10.0x', status: 'OPEN' }
+    ];
+
     const sectors = [
         { color: "#ffd700", val: 50000, name: "GOLD" }, { color: "#ff007f", val: 25000, name: "PINK" },
         { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" },
@@ -198,7 +204,8 @@
     ];
 
     function init() {
-        document.getElementById('vipBalance').innerText = cash.toLocaleString();
+        updateUI();
+        renderWagers();
         const wheel = document.getElementById('wheel');
         const angle = 360 / sectors.length;
         sectors.forEach((s, i) => {
@@ -208,6 +215,47 @@
             slice.style.backgroundColor = s.color;
             wheel.appendChild(slice);
         });
+    }
+
+    // --- BETTING FUNCTIONS ---
+
+    window.placeTacticalBet = function() {
+        const val = document.getElementById('pointPredValue').value;
+        if(!val || val <= 0) return alert("ENTER VALID POINT PREDICTION!");
+
+        cash -= 500; // Fixed cost for tactical bet
+        myWagers.unshift({ game: 'BADMINTON', selection: `PT: ${val}`, odds: '2.0x', status: 'OPEN' });
+
+        updateUI();
+        renderWagers();
+        alert("TACTICAL BET PLACED: $500 deducted.");
+    }
+
+    window.placeHubBet = function() {
+        const amt = parseInt(document.getElementById('hubBetAmt').value);
+        if(!amt || amt <= 0) return alert("ENTER VALID WAGER AMOUNT!");
+        if(amt > cash) return alert("INSUFFICIENT BALANCE!");
+
+        cash -= amt;
+        myWagers.unshift({ game: 'BLACKJACK', selection: 'HAND', odds: '2.5x', status: 'OPEN' });
+
+        updateUI();
+        renderWagers();
+        alert(`HUB BET PLACED: $${amt.toLocaleString()} deducted.`);
+    }
+
+    // --- UI HELPERS ---
+
+    function renderWagers() {
+        const list = document.getElementById('wagerList');
+        list.innerHTML = myWagers.map(w => `
+            <tr>
+                <td>${w.game}</td>
+                <td>${w.selection}</td>
+                <td>${w.odds}</td>
+                <td class="text-green-400">${w.status}</td>
+            </tr>
+        `).join('');
     }
 
     window.spinEliteWheel = function() {
@@ -232,16 +280,23 @@
     };
 
     function switchTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-content').forEach(c => {
+            c.classList.add('hidden');
+            c.style.display = '';
+        });
         document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
         const content = document.getElementById(`content-${tab}`);
         content.classList.remove('hidden');
         if(tab === 'casino') content.style.display = 'flex';
         else content.style.display = 'grid';
-        event.currentTarget.classList.add('active');
+        document.getElementById(`tab-${tab}`).classList.add('active');
     }
 
-    function updateUI() { document.getElementById('vipBalance').innerText = cash.toLocaleString(); localStorage.setItem('currentPlayerCash', cash); }
+    function updateUI() {
+        document.getElementById('vipBalance').innerText = cash.toLocaleString();
+        localStorage.setItem('currentPlayerCash', cash);
+    }
+
     window.addEventListener('load', init);
 </script>
 </body>
