@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP ACCESS: NEON HUSTLE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --neon-gold: #ffd700; --neon-cyan: #00f0ff; --neon-red: #ff3131; }
+
+        body {
+            background: #000;
+            color: var(--neon-cyan); font-family: 'Orbitron', sans-serif;
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; margin: 0;
+            background: radial-gradient(circle at center, #0a1a1a 0%, #000 100%);
+        }
+
+        .grid-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            perspective: 500px;
+            z-index: -1;
+        }
+
+        .bg-grid {
+            position: absolute;
+            width: 400%;
+            height: 400%;
+            top: -150%;
+            left: -150%;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, 0.25) 2px, transparent 2px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.25) 2px, transparent 2px);
+            background-size: 80px 80px;
+            transform: rotateX(75deg);
+            animation: flyForward 3s linear infinite;
+        }
+
+        .bg-grid::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.15), transparent);
+            animation: sweep 2s linear infinite;
+        }
+
+        @keyframes flyForward {
+            0% { transform: rotateX(75deg) translateY(0); }
+            100% { transform: rotateX(75deg) translateY(80px); }
+        }
+
+        @keyframes sweep {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .login-card {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--neon-gold);
+            padding: 3rem; border-radius: 20px;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+            width: 100%; max-width: 420px; text-align: center;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan);
+            animation: scan 3s ease-in-out infinite;
+        }
+
+        @keyframes scan { 0%, 100% { top: 0; opacity: 0; } 50% { top: 100%; opacity: 1; } }
+
+        input {
+            background: rgba(0, 0, 0, 0.7) !important;
+            border: 1px solid rgba(0, 240, 255, 0.4) !important;
+            color: white !important; font-family: 'Roboto Mono', monospace;
+            text-align: center; letter-spacing: 3px;
+        }
+
+        input:focus {
+            border-color: var(--neon-gold) !important;
+            outline: none; box-shadow: 0 0 15px var(--neon-gold);
+        }
+
+        .btn-access {
+            background: linear-gradient(45deg, var(--neon-gold), #b8860b);
+            color: black; font-weight: 900; width: 100%;
+            padding: 1rem; border-radius: 5px; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer;
+        }
+
+        .btn-access:hover {
+            box-shadow: 0 0 30px var(--neon-gold);
+        }
+
+        .error-msg { color: var(--neon-red); font-size: 0.7rem; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="grid-container">
+        <div class="bg-grid" id="mainGrid"></div>
+    </div>
+
+    <div class="login-card">
+        <div class="scan-line"></div>
+        <div class="mb-8">
+            <h1 class="text-2xl font-black text-white tracking-widest">VIP ACCESS</h1>
+            <p class="text-[9px] text-gold-400 mt-2 tracking-[5px]">DECRYPTING BIO-AUTH...</p>
+        </div>
+
+        <div class="space-y-6" id="loginForm">
+            <input type="text" id="username" placeholder="USER_ID" class="w-full p-3 rounded">
+            <input type="password" id="passkey" placeholder="PASSKEY" class="w-full p-3 rounded">
+            <button onclick="attemptLogin()" class="btn-access" id="loginBtn">Initiate Link</button>
+            <p id="errorMessage" class="error-msg">ACCESS DENIED: ILLEGAL SIGNATURE</p>
+        </div>
+    </div>
+
+    <script>
+        // FUNCTION TO HANDLE THE ACTUAL LOGIN LOGIC
+        function attemptLogin() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('passkey').value;
+            const grid = document.getElementById('mainGrid');
+            const btn = document.getElementById('loginBtn');
+
+            if (user === "VIP_HUSTLER" && pass === "NEON2025") {
+                btn.innerText = "AUTHENTICATED";
+                btn.style.background = "#00f0ff";
+                grid.style.animationDuration = "0.2s";
+
+                document.body.style.transition = "background 0.5s";
+                document.body.style.background = "white";
+
+                setTimeout(() => {
+                    window.location.href = "vip.html";
+                }, 600);
+            } else {
+                document.getElementById('errorMessage').style.display = 'block';
+                const card = document.querySelector('.login-card');
+                card.style.borderColor = "#ff3131";
+                setTimeout(() => card.style.borderColor = "#ffd700", 500);
+            }
+        }
+
+        // ADDING "ENTER" KEY SUPPORT
+        // We listen for any keyup event on the login form container
+        document.getElementById('loginForm').addEventListener('keyup', function(event) {
+            // Check if the key pressed was "Enter" (Key Code 13)
+            if (event.key === "Enter") {
+                attemptLogin();
+            }
+        });
+    </script>
+</body>
+</html>

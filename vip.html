@@ -90,6 +90,7 @@
                     <input type="text" id="colorPrediction" class="bg-black border-2 border-neon-gold text-white p-3 rounded-lg w-full text-center text-xl outline-none" placeholder="ENTER COLOR">
                 </div>
                 <button onclick="spinEliteWheel()" id="spinBtn" class="btn-bet text-sm uppercase">Activate Elite Spin</button>
+            <button onclick="terminateSession()" class="btn-terminate">TERMINATE SESSION</button>
             </div>
         </div>
 
@@ -202,6 +203,16 @@
         { color: "#ffd700", val: 50000, name: "GOLD" }, { color: "#ff007f", val: 25000, name: "PINK" },
         { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" }
     ];
+
+    window.terminateSession = function() {
+            // Optional: Wipe session data if you want a fresh start next time
+            localStorage.removeItem('currentPlayerCash');
+            localStorage.removeItem('currentWagers');
+
+            // Redirect to clubs.html
+            window.location.href = 'clubs.html';
+        }
+
 
     function init() {
         updateUI();
