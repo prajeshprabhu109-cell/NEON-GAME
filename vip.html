@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEON HUSTLE: VAI RAJA VAI ELITE</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { --neon-gold: #ffd700; --neon-pink: #ff007f; --neon-cyan: #00f0ff; --neon-blue: #1a237e; }
@@ -26,6 +27,7 @@
             flex-direction: column; position: relative; box-sizing: border-box;
         }
 
+        /* --- SCOREBOARD & HUD --- */
         .scoreboard {
             border: 2px solid var(--neon-cyan); border-radius: 20px;
             padding: 20px; text-align: center; background: rgba(0, 240, 255, 0.05);
@@ -38,10 +40,30 @@
         }
         .hud-title { font-size: 0.6rem; color: var(--neon-cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; }
 
+        /* --- NAVIGATION --- */
         .nav-tabs { display: flex; gap: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #222; }
         .tab-link { cursor: pointer; padding: 10px 0; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; color: var(--neon-gold); opacity: 0.4; transition: 0.4s; }
         .tab-link.active { opacity: 1; border-bottom: 3px solid var(--neon-gold); }
 
+        /* --- CLUB & ARMORY STYLES --- */
+        .chat-box {
+            font-family: 'Roboto Mono', monospace;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--neon-pink);
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
+            height: 250px;
+        }
+        .msg-nadia { color: var(--neon-pink); margin-bottom: 8px; }
+        .msg-you { color: var(--neon-cyan); text-align: right; margin-bottom: 8px; }
+
+        .weapon-card {
+            border: 1px solid var(--neon-cyan); background: rgba(0, 20, 20, 0.8);
+            transition: 0.3s; cursor: pointer;
+            padding: 1rem;
+        }
+        .weapon-card:hover { transform: translateY(-5px); box-shadow: 0 0 20px var(--neon-cyan); background: var(--neon-blue); }
+
+        /* --- WHEEL & GAMES --- */
         .game-selector-ring {
             width: 280px; height: 280px; border-radius: 50%;
             border: 4px double var(--neon-pink);
@@ -58,10 +80,35 @@
             font-weight: 900; padding: 0.8rem; border-radius: 8px;
             width: 100%; border: none; cursor: pointer; margin-top: 10px;
         }
+        .btn-terminate {
+            background: linear-gradient(45deg, #ff007f, #b80b4d); color: #fff;
+            font-weight: 900; padding: 0.8rem; border-radius: 8px;
+            width: 100%; border: none; cursor: pointer; margin-top: 10px;
+        }
         .pointer {
             position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
             z-index: 100; border-left: 12px solid transparent; border-right: 12px solid transparent;
             border-top: 25px solid var(--neon-gold); filter: drop-shadow(0 0 8px var(--neon-gold));
+        }
+
+        /* --- VIDEO & 3D MODAL STYLES --- */
+        #upgradeModal {
+            backdrop-filter: blur(5px);
+        }
+        .upgrade-btn {
+            border: 1px solid var(--neon-cyan);
+            transition: all 0.3s;
+        }
+        .upgrade-btn:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+        /* Style for the 3D Viewer */
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            border-radius: 10px;
         }
     </style>
 </head>
@@ -75,8 +122,10 @@
 
         <div class="nav-tabs">
             <div id="tab-casino" class="tab-link active" onclick="switchTab('casino')">Elite Casino</div>
-            <div id="tab-terminal" class="tab-link" onclick="switchTab('terminal')">Global Prediction Terminal</div>
-            <div id="tab-hub" class="tab-link" onclick="switchTab('hub')">Global Betting Hub</div>
+            <div id="tab-terminal" class="tab-link" onclick="switchTab('terminal')">Global Prediction</div>
+            <div id="tab-hub" class="tab-link" onclick="switchTab('hub')">Betting Hub</div>
+            <div id="tab-club" class="tab-link text-pink-500" onclick="switchTab('club')">THE CLUB</div>
+            <div id="tab-armory" class="tab-link text-red-500" onclick="switchTab('armory')">ARMORY 🔒</div>
         </div>
 
         <div id="content-casino" class="tab-content flex items-center justify-around flex-1 gap-8">
@@ -90,7 +139,7 @@
                     <input type="text" id="colorPrediction" class="bg-black border-2 border-neon-gold text-white p-3 rounded-lg w-full text-center text-xl outline-none" placeholder="ENTER COLOR">
                 </div>
                 <button onclick="spinEliteWheel()" id="spinBtn" class="btn-bet text-sm uppercase">Activate Elite Spin</button>
-            <button onclick="terminateSession()" class="btn-terminate">TERMINATE SESSION</button>
+                <button onclick="terminateSession()" class="btn-terminate">TERMINATE SESSION</button>
             </div>
         </div>
 
@@ -99,9 +148,11 @@
                 <div class="hud-panel flex-1">
                     <div class="hud-title">Live Video Feed</div>
                     <div class="w-full h-[160px] bg-black/40 rounded border border-cyan-500 flex items-center justify-center overflow-hidden">
+                         <div class="w-full h-[160px] bg-black/40 rounded border border-cyan-500 flex items-center justify-center overflow-hidden">
                         <video id="badVid" autoplay loop muted class="w-full h-full object-cover opacity-70">
                             <source src="bad (1) (1).mp4" type="video/mp4">
                         </video>
+                    </div>
                     </div>
                 </div>
                 <div class="hud-panel">
@@ -118,6 +169,7 @@
                         <div class="score-large">12</div>
                     </div>
                 </div>
+
                 <div class="hud-panel text-center">
                     <div class="hud-title">Point Prediction</div>
                     <input id="pointPredValue" type="number" class="bg-transparent border-b-2 border-neon-cyan text-white text-4xl w-32 text-center font-black outline-none" placeholder="00">
@@ -138,47 +190,212 @@
                 <div class="hud-panel flex-1">
                     <div class="hud-title text-pink-500">Featured: Black Jack</div>
                     <div class="bg-black/80 rounded h-[120px] mb-4 border border-pink-500/30 flex items-center justify-center overflow-hidden">
-                        <video id="dealVid" autoplay loop muted class="w-full h-full object-cover opacity-70">
+                         <video id="dealVid" autoplay loop muted class="w-full h-full object-cover opacity-70">
                              <source src="deal (1).mp4" type="video/mp4">
                         </video>
-                    </div>
-                    <div class="text-[0.5rem] space-y-1">
-                        <p>PARKER WINS HAND <span class="float-right text-pink-500">2.5x</span></p>
-                        <p>DEALER BUSTS <span class="float-right text-pink-500">1.9x</span></p>
                     </div>
                     <input id="hubBetAmt" type="number" class="bg-black/50 border border-pink-500/50 w-full mt-3 p-1 text-center text-[0.7rem]" placeholder="ENTER AMT">
                     <button onclick="placeHubBet()" class="btn-bet" style="background: var(--neon-cyan)">PLACE HUB BET</button>
                 </div>
             </div>
-
             <div class="col-span-6 flex flex-col items-center justify-center">
                 <div class="game-selector-ring">
                     <div class="text-center">
                         <div class="text-[8px] opacity-50 tracking-[3px]">ACTIVE HUB</div>
                         <div class="text-xl font-black text-white">GAME SELECTOR</div>
-                        <div class="flex gap-4 mt-2 text-[8px] text-pink-500">
-                            <span>POKER</span><span>ROULETTE</span><span>SLOTS</span>
-                        </div>
                     </div>
                 </div>
                 <div class="hud-panel mt-4 w-full h-32 overflow-y-auto">
                     <div class="hud-title">My Wagers</div>
                     <table class="wager-table">
                         <thead><tr><th>GAME</th><th>SELECTION</th><th>ODDS</th><th>STATUS</th></tr></thead>
-                        <tbody id="wagerList">
-                            </tbody>
+                        <tbody id="wagerList"></tbody>
                     </table>
                 </div>
             </div>
-
             <div class="col-span-3 flex flex-col gap-3">
                 <div class="hud-panel flex-1">
                     <div class="hud-title">Hub Live Bets</div>
                     <div class="space-y-4">
                         <div class="flex justify-between text-[0.55rem]"><span>PLAYER WINS ROULETTE</span><span class="text-cyan-400">3.8x</span></div>
-                        <div class="flex justify-between text-[0.55rem]"><span>ROYAL FLUSH (POKER)</span><span class="text-cyan-400">500x</span></div>
-                        <div class="flex justify-between text-[0.55rem]"><span>DEALER 21 (BLACKJACK)</span><span class="text-cyan-400">2.1x</span></div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-club" class="tab-content hidden flex-1 flex flex-col items-center justify-center gap-4">
+            <div class="text-center">
+                <h2 class="text-3xl font-black text-neon-pink tracking-[5px] mb-2">THE VIP LOUNGE</h2>
+                <p class="text-[10px] text-gray-400">HOSTESS: NADIA</p>
+            </div>
+
+            <div id="chatDisplay" class="w-full max-w-2xl max-h-[40vh] chat-box p-6 overflow-y-auto rounded-xl flex flex-col">
+                <div class="msg-nadia">NADIA: Well, well. A new face. Welcome to the lounge.</div>
+                <div class="msg-nadia">NADIA: What brings a player like you here?</div>
+            </div>
+
+            <div id="chatOptions" class="grid grid-cols-2 gap-4 w-full max-w-2xl">
+                <button onclick="chatReply(1)" class="bg-gray-800 border border-gray-600 text-white p-3 rounded hover:bg-gray-700 transition">"Just looking for a good time."</button>
+                <button onclick="chatReply(2)" class="bg-gray-800 border border-gray-600 text-white p-3 rounded hover:bg-gray-700 transition">"I need weapons. Give me the key."</button>
+                </div>
+        </div>
+
+        <div id="content-armory" class="tab-content hidden flex-1 flex flex-col items-center justify-center">
+
+            <div id="armory-locked" class="text-center border-2 border-red-600 bg-black/90 p-12 rounded-2xl shadow-[0_0_50px_red]">
+                <h1 class="text-5xl font-black text-red-600 mb-4 tracking-widest">ACCESS DENIED</h1>
+                <p class="text-white mb-6 font-mono text-sm">SECURITY CLEARANCE REQUIRED.</p>
+                <div class="text-xs text-gray-500">HINT: Talk to Nadia in The Club to get the Pass Key.</div>
+            </div>
+
+            <div id="armory-unlocked" class="hidden w-full h-full flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-3xl font-black text-neon-cyan tracking-widest">BLACK MARKET ARMORY</h2>
+                    <div class="text-green-500 text-xs border border-green-500 px-3 py-1 rounded">ACCESS GRANTED</div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 overflow-y-auto pr-2 pb-4 max-h-[60vh]">
+                                        <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('DESERT EAGLE', 5000, 'model', 'golden_ak-47.glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-neon-gold font-bold text-base">GOLDEN AK-47</h3>
+                        <p class="text-[9px] text-gray-300">High fire rate. Luxury finish.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$25,000</div>
+                    </div>
+
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('DESERT EAGLE', 5000, 'model', 'eagle_statue-compressed.glb')">
+                        <div class="text-3xl"></div>
+                        <h3 class="text-white font-bold text-base">DESERT EAGLE</h3>
+                        <p class="text-[9px] text-gray-300">Heavy damage pistol.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$5,000</div>
+                    </div>
+
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('C4 EXPLOSIVE', 8000, 'model', 'c4_explosive.glb')">
+                        <div class="text-3xl"></div>
+                        <h3 class="text-red-500 font-bold text-base">C4 EXPLOSIVE</h3>
+                        <p class="text-[9px] text-gray-300">Remote detonation.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$8,000</div>
+                    </div>
+
+                                                            <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('DESERT EAGLE', 5000, 'model', 'tactical_knife.glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-white font-bold text-base">TACTICAL KNIFE</h3>
+                        <p class="text-[9px] text-gray-300">Silent takedown.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$1,500</div>
+                    </div>
+
+                                                            <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('DESERT EAGLE', 5000, 'model', 'rpg_7__free_model.glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-neon-cyan font-bold text-base">RPG LAUNCHER</h3>
+                        <p class="text-[9px] text-gray-300">Maximum destruction.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$50,000</div>
+</div>
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('M240B MACHINE GUN', 5000, 'model', 'm240b_machine_gun1.glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-neon-cyan font-bold text-base">M240B Machine gun</h3>
+                        <p class="text-[9px] text-gray-300">Maximum destruction.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$50,000</div>
+                    </div>
+
+                        <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('M60 Machine Gun', 5000, 'model', 'low-poly_m60_machine_gun.glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-neon-cyan font-bold text-base">M60 Machine Gun</h3>
+                        <p class="text-[9px] text-gray-300">Maximum destruction.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$50,000</div>
+                    </div>
+
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('308 Machine Gun', 5000, 'model', '308_machine_gun (2).glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-neon-cyan font-bold text-base">308 Machine Gun</h3>
+                        <p class="text-[9px] text-gray-300">Maximum destruction.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$50,000</div>
+                    </div>
+
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('Ballistic Helmet', 5000, 'model', 'spetsnaz_ballistic_helmet__concept.compressed.glb')">
+
+                        <div class="text-3xl"></div>
+                        <h3 class="text-neon-cyan font-bold text-base">Ballistic Helmet</h3>
+                        <p class="text-[9px] text-gray-300">Maximum destruction.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$50,000</div>
+                        </div>
+
+                        <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('Oxygen Mask', 8000, 'model', 'oxygen_mask.glb')">
+                        <div class="text-3xl"></div>
+                        <h3 class="text-red-500 font-bold text-base">Oxygen Mask</h3>
+                        <p class="text-[9px] text-gray-300">Remote detonation.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$8,000</div>
+                    </div>
+
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('Mtech tactical knife', 8000, 'model', 'mtech_usa_xtreme_tactical_knife.glb')">
+                        <div class="text-3xl"></div>
+                        <h3 class="text-red-500 font-bold text-base">Mtech tactical knife</h3>
+                        <p class="text-[9px] text-gray-300">Maximum destruction.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$8,000</div>
+                    </div>
+
+                    <div class="weapon-card rounded-xl flex flex-col items-center text-center gap-2" onclick="buyWeapon('Drone', 8000, 'model', 'drone_design.glb')">
+                        <div class="text-3xl"></div>
+                        <h3 class="text-red-500 font-bold text-base">Drone</h3>
+                        <p class="text-[9px] text-gray-300">Remote detonation.</p>
+                        <div class="mt-auto text-lg font-mono text-green-400">$8,000</div>
+                    </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="upgradeModal" class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4">
+        <div class="relative w-full max-w-4xl border-2 border-neon-gold rounded-2xl p-6 bg-black/80 flex flex-col gap-4 shadow-[0_0_50px_#ffd700]">
+            <button onclick="closeUpgradeModal()" class="absolute top-4 right-4 text-red-500 hover:text-white font-black text-xl z-20">X</button>
+            <h2 id="modalTitle" class="text-3xl font-black text-neon-gold tracking-widest text-center">WEAPON LAB</h2>
+
+            <div class="w-full aspect-video bg-black border border-gray-700 rounded-lg overflow-hidden relative shadow-[0_0_30px_rgba(255,215,0,0.3)]">
+
+                <video id="gunVideo" class="hidden w-full h-full object-cover pointer-events-none" loop muted playsinline>
+                    <source id="videoSource" src="" type="video/mp4">
+                </video>
+
+                <model-viewer id="model3D" class="hidden"
+                    src=""
+                    alt="A 3D model"
+                    auto-rotate
+                    camera-controls
+                    shadow-intensity="1"
+                    environment-image="neutral"
+                    interaction-prompt="auto">
+                </model-viewer>
+
+            </div>
+
+            <div class="grid grid-cols-4 gap-4 mt-2">
+                <div onclick="buyUpgrade('SCOPE 4X', 2000)" class="upgrade-btn cursor-pointer p-3 rounded bg-black/50 text-center group">
+                    <div class="text-2xl mb-1">🔭</div>
+                    <div class="text-xs font-bold text-white group-hover:text-neon-cyan">4X SCOPE</div>
+                    <div class="text-[10px] text-green-400">$2,000</div>
+                </div>
+                <div onclick="buyUpgrade('SUPPRESSOR', 1500)" class="upgrade-btn cursor-pointer p-3 rounded bg-black/50 text-center group">
+                    <div class="text-2xl mb-1">🔇</div>
+                    <div class="text-xs font-bold text-white group-hover:text-neon-cyan">SUPPRESSOR</div>
+                    <div class="text-[10px] text-green-400">$1,500</div>
+                </div>
+                <div onclick="buyUpgrade('EXT. MAG', 1000)" class="upgrade-btn cursor-pointer p-3 rounded bg-black/50 text-center group">
+                    <div class="text-2xl mb-1">🔋</div>
+                    <div class="text-xs font-bold text-white group-hover:text-neon-cyan">EXT. MAG</div>
+                    <div class="text-[10px] text-green-400">$1,000</div>
+                </div>
+                <div onclick="buyUpgrade('SKIN: GLACIER', 50000)" class="cursor-pointer border border-neon-pink p-3 rounded bg-pink-900/10 hover:bg-pink-900/50 transition text-center group">
+                    <div class="text-2xl mb-1">❄️</div>
+                    <div class="text-xs font-bold text-white group-hover:text-neon-pink">GLACIER SKIN</div>
+                    <div class="text-[10px] text-green-400">$50,000</div>
                 </div>
             </div>
         </div>
@@ -186,8 +403,8 @@
 
 <script>
     let cash = parseInt(localStorage.getItem('currentPlayerCash')) || 1621700;
+    let hasArmoryKey = localStorage.getItem('hasArmoryKey') === 'true';
 
-    // Initial Wagers Data
     let myWagers = [
         { game: 'BADMINTON', selection: 'PARKER', odds: '1.8x', status: 'OPEN' },
         { game: 'CASINO', selection: 'GOLD', odds: '10.0x', status: 'OPEN' }
@@ -204,19 +421,20 @@
         { color: "#00f0ff", val: 10000, name: "CYAN" }, { color: "#1a237e", val: 5000, name: "BLUE" }
     ];
 
-    window.terminateSession = function() {
-            // Optional: Wipe session data if you want a fresh start next time
+window.terminateSession = function() {
+            // 1. Clear the data (Optional: remove these lines if you want to keep cash when leaving)
             localStorage.removeItem('currentPlayerCash');
-            localStorage.removeItem('currentWagers');
+            localStorage.removeItem('hasArmoryKey');
 
-            // Redirect to clubs.html
+            // 2. Redirect to clubs.html
             window.location.href = 'clubs.html';
         }
-
 
     function init() {
         updateUI();
         renderWagers();
+        checkArmoryStatus();
+
         const wheel = document.getElementById('wheel');
         const angle = 360 / sectors.length;
         sectors.forEach((s, i) => {
@@ -228,17 +446,192 @@
         });
     }
 
-    // --- BETTING FUNCTIONS ---
+    // --- TAB SWITCHING ---
+    window.switchTab = function(tab) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
+
+        const content = document.getElementById(`content-${tab}`);
+        content.classList.remove('hidden');
+
+        if(tab === 'casino') content.style.display = 'flex';
+        else if (tab === 'club' || tab === 'armory') content.style.display = 'flex';
+        else content.style.display = 'grid';
+
+        document.getElementById(`tab-${tab}`).classList.add('active');
+
+        if(tab === 'armory') checkArmoryStatus();
+    }
+
+    // --- CLUB / CHAT ---
+    let chatStage = 0;
+
+    window.chatReply = function(option) {
+        const chatDisplay = document.getElementById('chatDisplay');
+        const optionsDiv = document.getElementById('chatOptions');
+
+        const addMsg = (who, text) => {
+            const div = document.createElement('div');
+            div.className = who === 'YOU' ? 'msg-you' : 'msg-nadia';
+            div.innerHTML = `<strong>${who}:</strong> ${text}`;
+            chatDisplay.appendChild(div);
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        };
+
+        optionsDiv.innerHTML = '';
+
+        if(chatStage === 0) {
+            if(option === 1) {
+                addMsg('YOU', "Just looking for a good time.");
+                setTimeout(() => {
+                    addMsg('NADIA', "A good time costs money. Do you have style?");
+                    showChatButtons(["I drive a custom Ferrari.", "I have $10."]);
+                    chatStage = 1;
+                }, 1000);
+            }
+            else if(option === 3) {
+                addMsg('YOU', "I'm a high roller. I run the Elite Casino.");
+                setTimeout(() => {
+                    addMsg('NADIA', "Oh, a VIP? I like confidence. Here, take the Armory Pass.");
+                    addMsg('SYSTEM', '<span style="color:#00ff00">>> ITEM RECEIVED: ARMORY KEY <<</span>');
+                    unlockArmory();
+                }, 1000);
+            }
+            else {
+                addMsg('YOU', "Give me the key.");
+                setTimeout(() => {
+                    addMsg('NADIA', "Rude. Security! Get him out.");
+                    setTimeout(() => location.reload(), 2000);
+                }, 1000);
+            }
+        }
+        else if (chatStage === 1) {
+             if(option === 1) {
+                addMsg('YOU', "I drive a custom Ferrari.");
+                setTimeout(() => {
+                    addMsg('NADIA', "Nice. You belong here. Access granted.");
+                    addMsg('SYSTEM', '<span style="color:#00ff00">>> ITEM RECEIVED: ARMORY KEY <<</span>');
+                    unlockArmory();
+                }, 1000);
+             } else {
+                 addMsg('YOU', "I have $10.");
+                 setTimeout(() => { addMsg('NADIA', "Not enough. Bye."); location.reload(); }, 1000);
+             }
+        }
+    }
+
+    function showChatButtons(texts) {
+        const optionsDiv = document.getElementById('chatOptions');
+        texts.forEach((text, index) => {
+            const btn = document.createElement('button');
+            btn.className = "bg-gray-800 border border-gray-600 text-white p-3 rounded hover:bg-gray-700 transition";
+            btn.innerText = text;
+            btn.onclick = () => chatReply(index + 1);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function unlockArmory() {
+        hasArmoryKey = true;
+        localStorage.setItem('hasArmoryKey', 'true');
+
+        const tab = document.getElementById('tab-armory');
+        tab.innerText = "ARMORY 🔓";
+        tab.classList.remove('text-red-500');
+        tab.classList.add('text-green-500');
+
+        const optionsDiv = document.getElementById('chatOptions');
+        optionsDiv.innerHTML = '<div class="text-green-500 font-bold border border-green-500 p-4 text-center col-span-2">ACCESS GRANTED. CHECK THE ARMORY TAB.</div>';
+    }
+
+    // --- ARMORY STATUS ---
+    function checkArmoryStatus() {
+        const tab = document.getElementById('tab-armory');
+        if(hasArmoryKey) {
+            tab.innerText = "ARMORY 🔓";
+            tab.classList.remove('text-red-500');
+            tab.classList.add('text-green-500');
+
+            document.getElementById('armory-locked').classList.add('hidden');
+            document.getElementById('armory-unlocked').classList.remove('hidden');
+        } else {
+            tab.innerText = "ARMORY 🔒";
+            document.getElementById('armory-locked').classList.remove('hidden');
+            document.getElementById('armory-unlocked').classList.add('hidden');
+        }
+    }
+
+    // --- UNIVERSAL BUY FUNCTION ---
+    window.buyWeapon = function(name, price, type, source) {
+        if (type) {
+            openUpgradeModal(name, type, source);
+            return;
+        }
+
+        if(cash >= price) {
+            cash -= price;
+            updateUI();
+            alert(`PURCHASE SUCCESSFUL: ${name}\n-$${price.toLocaleString()}`);
+        } else {
+            alert(`INSUFFICIENT FUNDS!\nYou need $${(price - cash).toLocaleString()} more.`);
+        }
+    }
+
+    // --- UNIVERSAL MODAL LOGIC ---
+    function openUpgradeModal(name, type, source) {
+        const modal = document.getElementById('upgradeModal');
+        const title = document.getElementById('modalTitle');
+        const video = document.getElementById('gunVideo');
+        const model = document.getElementById('model3D');
+        const videoSrc = document.getElementById('videoSource');
+
+        // Reset
+        video.classList.add('hidden');
+        model.classList.add('hidden');
+        video.pause();
+
+        // Set Title
+        title.innerText = `WEAPON LAB: ${name}`;
+
+        // Handle Type
+        if (type === 'video') {
+            video.classList.remove('hidden');
+            videoSrc.src = source;
+            video.load();
+            video.play();
+        } else if (type === 'model') {
+            model.classList.remove('hidden');
+            model.src = source;
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    window.closeUpgradeModal = function() {
+        const modal = document.getElementById('upgradeModal');
+        const video = document.getElementById('gunVideo');
+        modal.classList.add('hidden');
+        video.pause();
+    }
+
+    window.buyUpgrade = function(item, price) {
+        if(cash >= price) {
+            cash -= price;
+            updateUI();
+            alert(`UPGRADE EQUIPPED: ${item}\n-$${price.toLocaleString()}`);
+        } else {
+            alert(`NOT ENOUGH CASH!\nRequired: $${price.toLocaleString()}`);
+        }
+    }
+
+    // --- EXISTING GAME LOGIC ---
 
     window.placeTacticalBet = function() {
         const val = document.getElementById('pointPredValue').value;
         if(!val || val <= 0) return alert("ENTER VALID POINT PREDICTION!");
-
-        cash -= 500; // Fixed cost for tactical bet
+        cash -= 500;
         myWagers.unshift({ game: 'BADMINTON', selection: `PT: ${val}`, odds: '2.0x', status: 'OPEN' });
-
-        updateUI();
-        renderWagers();
+        updateUI(); renderWagers();
         alert("TACTICAL BET PLACED: $500 deducted.");
     }
 
@@ -246,16 +639,11 @@
         const amt = parseInt(document.getElementById('hubBetAmt').value);
         if(!amt || amt <= 0) return alert("ENTER VALID WAGER AMOUNT!");
         if(amt > cash) return alert("INSUFFICIENT BALANCE!");
-
         cash -= amt;
         myWagers.unshift({ game: 'BLACKJACK', selection: 'HAND', odds: '2.5x', status: 'OPEN' });
-
-        updateUI();
-        renderWagers();
+        updateUI(); renderWagers();
         alert(`HUB BET PLACED: $${amt.toLocaleString()} deducted.`);
     }
-
-    // --- UI HELPERS ---
 
     function renderWagers() {
         const list = document.getElementById('wagerList');
@@ -289,19 +677,6 @@
             updateUI(); alert(msg); btn.disabled = false;
         }, 5000);
     };
-
-    function switchTab(tab) {
-        document.querySelectorAll('.tab-content').forEach(c => {
-            c.classList.add('hidden');
-            c.style.display = '';
-        });
-        document.querySelectorAll('.tab-link').forEach(l => l.classList.remove('active'));
-        const content = document.getElementById(`content-${tab}`);
-        content.classList.remove('hidden');
-        if(tab === 'casino') content.style.display = 'flex';
-        else content.style.display = 'grid';
-        document.getElementById(`tab-${tab}`).classList.add('active');
-    }
 
     function updateUI() {
         document.getElementById('vipBalance').innerText = cash.toLocaleString();
