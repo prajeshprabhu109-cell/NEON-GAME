@@ -1,0 +1,24 @@
+:root {
+  --primary: #00ffff;
+  --accent: #ff0055;
+}
+
+body {
+  background: #000;
+  color: var(--primary);
+  text-align: center;
+  font-family: Arial, sans-serif;
+}
+
+canvas {
+  background: #000;
+  display: block;
+  margin: 20px auto;
+}
+
+button {
+  background: var(--primary);
+  border: none;
+  padding: 10px 20px;
+  font-weight: bold;
+}

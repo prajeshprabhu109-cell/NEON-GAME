@@ -1,0 +1,6 @@
+{
+  "baseSpeed": 5,
+  "maxSpeed": 15,
+  "trafficDensity": 0.4,
+  "difficulty": "normal"
+}
